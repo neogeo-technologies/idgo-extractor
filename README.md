@@ -42,6 +42,7 @@ L'API REST reste est alors disponible sur [http://localhost:8080/](http://localh
 
 Hors Docker, sur une base Debian (Stretch)
 
+```
 sudo apt-get install -y \
         python3 \
         python3-all-dev \
@@ -54,10 +55,13 @@ sudo apt-get install -y \
 sudo pip3 install -r resources/requirements.txt
 sudo pip3 install -r celery/requirements.txt
 sudo pip3 install uwsgi 
+```
 
 Puis lancer le frontend et le backend (celery)
+```
 cd frontend; ./start.sh &; cd ..
 cd celery; ./start.sh &; cd ..
+```
 
 S'assurer que le service Redis est lancé.
 
@@ -76,7 +80,7 @@ Endpoint: /jobs
 Body payload :
 
 Document JSON
-
+```
 {
     'user_id': 'Chaine de caractères identifiant l’utilisateur de manière unique',
     'user_name': 'Chaine de caractères contenant le nom de famille de l’utilisateur',
@@ -106,6 +110,8 @@ Document JSON
     'img_res': "Nombre flottant. Résolution de l’image produite dans l'unité de dst_srs (mètres ou degrés en fonction des cas). La même résolution est appliquée en x et y."
     'img_resampling_method': "Chaine de caractères. Méthode de ré-échantillonage appliquée par GDAL. Supporte les valeurs proposées par GDAL: nearest, bilinear, cubic, cubicspline, lanczos, average",
     'extracts_volume': "Adresse du volume dans lequel les données extraites doivent être déposée"
+}
+```
 
 Réponse (HTTP status codes) :
 201 - Réponse positive
@@ -115,6 +121,7 @@ Réponse (HTTP status codes) :
 Réponse body:
 
 Document JSON en cas de succès
+```
 {
     'submitted_request': "reprise de la requête entrante sous forme de dictionnaire JSon",
     'datetime': 'Chaine de caractère au format ISO-8601. Par ex: 2017-06-29T18:00:55Z',
@@ -131,14 +138,17 @@ Document JSON en cas de succès
     'status': 'SUBMITTED',
     'task_id': 'Identifiant unique sous forme de chaine de caractère. Par ex 5dbaab61-4321-4179-956e-b036a951f215'
 }
+```
 
 Document JSON en cas d'échec à la validation 
+```
 {
     "status": "ERROR",
     "detail": "Raison détaillée de l'erreur",
     "incoming_post_data": "reprise de la payload d'entrée",
     "exception": "Optionnel. Texte associée à l'exception Python"
 }
+```
 
 ### Opération : consulter l’avancement d’une extraction
 
@@ -157,7 +167,7 @@ Réponse (HTTP status codes) :
 
 Réponse body:
 Document JSON
-
+```
 {
     "task_id: "identifiant de la tache",
     "status": "SUBMITTED, STARTED, PROGRESS, SUCCESS, STOP_REQUESTED, STOPPED ou FAILED",
@@ -183,7 +193,7 @@ Document JSON
     "progress_pct": "nombre entre 0 et 100 avec le pourcentage 'avancement. Présent pour status = PROGRESS",
     "zip_name": "chemin vers le fichier ZIP contenant le résultat de l'extraction. Présent pour status = SUCCESS",
 }
-
+```
 Détail des états:
 SUBMITTED: tache mise en queue mais non encore dispatchée ou démarrée
 STARTED: tache en cours de démarrage par un worker (état transitoire très court)
@@ -203,9 +213,11 @@ Type de requête : HTTP(S) PUT
 Endpoint: /jobs/{task_id}
 
 Body payload :
+```
 {
     'status': 'STOP_REQUESTED'
 }
+```
 
 Réponse (HTTP status codes) :
 201 - Cas normal : lorsque la commande d’extraction existe, qu’elle est dans la pile des traitements en attente ou en cours d’exécution et qu’aucune anomalie n’est rencontrée
@@ -216,6 +228,7 @@ Réponse (HTTP status codes) :
 
 Réponse body:
 Document JSON
+```
 {
     "task_id: "identifiant de la tache",
     "status": "STOP_REQUESTED",
@@ -224,8 +237,9 @@ Document JSON
             'url': 'http://localhost:5000/jobs/{task_id}',
             'verb': 'GET'
         }
-    },
+    }
 }
+```
 
 ### Opération : obtenir le résultat d'une commande d'extraction
 
