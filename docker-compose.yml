@@ -1,0 +1,108 @@
+version: '2'
+
+volumes:
+  idgo_extract_extracts:
+#  ldap_data:
+#  ldap_conf:
+  redis_data:
+  idgo_extract_pg_data:
+
+services:
+
+  # Flask Main Application
+  app:
+    build: .
+    image: idgo/idgo_extract-app
+    environment:
+      - UWSGI_ENABLE_THREADS=1
+      - UWSGI_SINGLE_INTERPRETER=1
+      - UWSGI_PROCESSES=3
+      - UWSGI_THREADS=2
+      - UWSGI_MASTER=1
+      - UWSGI_SOCKET_TIMEOUT=2400
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+#      - LDAP_URI=ldap://ldap:389
+#      - LDAP_BINDDN=cn=admin,dc=georchestra,dc=org
+#      - LDAP_PASSWD=secret
+#      - LDAP_ORGS_BASEDN=ou=orgs,dc=georchestra,dc=org
+#      - LDAP_SEARCH_FILTER=(&(cn=%s)(objectClass=groupOfMembers))
+      - DEBUG=False
+    volumes:
+      - idgo_extract_extracts:/extracts:ro
+      - ./resources/extract_service_conf.yml:/etc/extract_service_conf.yml:ro
+      - ./resources/locale:/locale:ro
+      - ./common:/common:ro
+      - ./tests:/tests
+
+  # Worker
+  worker:
+    build: celery
+    image: idgo/idgo_extract-worker
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - PG_CONNECT_STRING=host=database port=5432 user=geoserver dbname=geoserver password=geoserver
+      - LOCAL_SMTP_HOST=smtp
+      - PROCESS_TIMEOUT=7200
+      - IDGO_EXTRACT_EXTRACTS_RETENTION_DAYS=1
+    volumes:
+      - idgo_extract_extracts:/extracts
+      - ./resources/extract_service_conf.yml:/etc/extract_service_conf.yml:ro
+      - ./resources/locale:/locale:ro
+      - ./common:/common:ro
+      - ./tests:/tests
+
+  # Proxy
+  nginx:
+    image: nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./resources/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+
+  # sample geOrchestra LDAP
+  #ldap:
+  #  image: georchestra/ldap
+  #  environment:
+  #    - SLAPD_ORGANISATION=georchestra
+  #    - SLAPD_DOMAIN=georchestra.org
+  #    - SLAPD_PASSWORD=secret
+  #    - SLAPD_ADDITIONAL_MODULES=groupofmembers
+  #  volumes:
+  #    - ldap_data:/var/lib/ldap
+  #    - ldap_config:/etc/ldap
+  #  ports:
+  #    - "3899:389"
+
+
+  # Message broker
+  redis:
+    image: redis:3.2
+    volumes:
+      - redis_data:/data
+
+
+  # Database with idgo_extract (geo)data
+  database:
+    image: camptocamp/postgis:9.5
+    volumes:
+      - idgo_extract_pg_data:/var/lib/postgresql/data
+    ports:
+      - "54322:5432"
+    environment:
+      POSTGRES_DB: geoserver
+      POSTGRES_PASSWORD: geoserver
+      POSTGRES_USER: geoserver
+
+
+  # SMTP
+  smtp:
+    image: camptocamp/smtp-sink
+
+  webmail:
+    image: camptocamp/sqwebmail
+    ports:
+      - "8081:80"
+    volumes_from:
+      - smtp:rw
