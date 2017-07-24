@@ -42,6 +42,7 @@ L'API REST reste est alors disponible sur [http://localhost:8080/](http://localh
 
 Hors Docker, sur une base Debian (Stretch)
 
+```
 sudo apt-get install -y \
         python3 \
         python3-all-dev \
@@ -54,10 +55,13 @@ sudo apt-get install -y \
 sudo pip3 install -r resources/requirements.txt
 sudo pip3 install -r celery/requirements.txt
 sudo pip3 install uwsgi 
+```
 
 Puis lancer le frontend et le backend (celery)
+```
 cd frontend; ./start.sh &; cd ..
 cd celery; ./start.sh &; cd ..
+```
 
 S'assurer que le service Redis est lancé.
 
@@ -76,37 +80,38 @@ Endpoint: /jobs
 Body payload :
 
 Document JSON
-
+```
 {
-    'user_id': 'Chaine de caractères identifiant l’utilisateur de manière unique',
-    'user_name': 'Chaine de caractères contenant le nom de famille de l’utilisateur',
-    'user_first_name': 'Chaine de caractères contenant le prénom de l’utilisateur',
-    'user_company': 'Chaine de caractères contenant le nom de l’organisme de l’utilisateur',
-    'user_email_address': 'Chaine de caractères contenant l’adresse email de l’utilisateur (indispensable pour l’avertir de l’avancement des traitements)',
-    'user_address': 'Chaine de caractères contenant l’adresse postale de l’utilisateur (indispensable pour lui envoyer un support physique avec les données)',
-    'source': 'Chaine de connexion GDAL/OGR à la source de données sur laquelle porte l’extraction',
-    'layer': 'Couche à extraire (dans le cas de données vecteur) Cf. paramètre layer de orginfo : http://www.gdal.org/ogrinfo.html',
-    'dst_format' :
+    "user_id": "Chaine de caractères identifiant l’utilisateur de manière unique",
+    "user_name": "Chaine de caractères contenant le nom de famille de l’utilisateur",
+    "user_first_name": "Chaine de caractères contenant le prénom de l’utilisateur",
+    "user_company": "Chaine de caractères contenant le nom de l’organisme de l’utilisateur",
+    "user_email_address": "Chaine de caractères contenant l’adresse email de l’utilisateur (indispensable pour l’avertir de l’avancement des traitements)",
+    "user_address": "Chaine de caractères contenant l’adresse postale de l’utilisateur (indispensable pour lui envoyer un support physique avec les données)",
+    "source": "Chaine de connexion GDAL/OGR à la source de données sur laquelle porte l’extraction",
+    "layer": "Couche à extraire (dans le cas de données vecteur) Cf. paramètre layer de orginfo : http://www.gdal.org/ogrinfo.html",
+    "dst_format" :
     {
         "gdal_driver":            "Nom court du driver GDAL/OGR. Par exemple GTiff, ESRI Shapefile, GPKG",
         "extension":              'extension du fichier. Optionnel. Dans le cas où gdal_driver est "MapInfo file", doit être "tab" ou "mif"'
         "options": {
             "nom_de_la_clef":       "valeur"
         },
-
         "layer_options":  # applicable uniquement pour les drivers vecteurs
         {
             "nom_de_la_clef":       "valeur"
         }
     },
-    'dst_srs': "Chaine de caractères contenant le système de coordonnées en sortie sous la forme d’un code EPSG. Exemple : 'epsg:2154' pour le Lambert93.",
-    'footprint': "Emprise géographique d'extraction en WKT (chaine de caractère) ou GeoJSON (sous la forme d'un objet JSon)",
-    'footprint_srs': "Chaine de caractères contenant le système de coordonnées de footprint. Si footprint est GeoJSON doit être EPSG:4326. Si footprint est WKT, peut être quelconque (y compris différent du SRS des données demandé en sortie"
-    'img_overviewed': "Booléean JSon. Si ce paramètre est fixé à true, l'extracteur crée des overviews de manière itérative en appliquant un facteur d'échelle 2 depuis l'échelle nominale des données. Cette itération est stoppée dès que la taille d'un overview est strictement inférieure au paramètre img_overview_min_size (aucun overview dont une des dimensions est strictement inférieure à ce paramètre ne doit être créé).",
-    'img_overview_min_size' : "Valeur entière. Dimension minimum des overviews intégrées au fichier image produit (les overviews sont créés jusqu'à ce que leur largeur et hauteur est inférieure à ce paramètre). Valeur par défaut: 256",
-    'img_res': "Nombre flottant. Résolution de l’image produite dans l'unité de dst_srs (mètres ou degrés en fonction des cas). La même résolution est appliquée en x et y."
-    'img_resampling_method': "Chaine de caractères. Méthode de ré-échantillonage appliquée par GDAL. Supporte les valeurs proposées par GDAL: nearest, bilinear, cubic, cubicspline, lanczos, average",
-    'extracts_volume': "Adresse du volume dans lequel les données extraites doivent être déposée"
+    "dst_srs": "Chaine de caractères contenant le système de coordonnées en sortie sous la forme d’un code EPSG. Exemple : 'epsg:2154' pour le Lambert93.",
+    "footprint": "Emprise géographique d'extraction en WKT (chaine de caractère) ou GeoJSON (sous la forme d'un objet JSon)",
+    "footprint_srs": "Chaine de caractères contenant le système de coordonnées de footprint. Si footprint est GeoJSON doit être EPSG:4326. Si footprint est WKT, peut être quelconque (y compris différent du SRS des données demandé en sortie",
+    "img_overviewed": "Booléean JSon. Si ce paramètre est fixé à true, l'extracteur crée des overviews de manière itérative en appliquant un facteur d'échelle 2 depuis l'échelle nominale des données. Cette itération est stoppée dès que la taille d'un overview est strictement inférieure au paramètre img_overview_min_size (aucun overview dont une des dimensions est strictement inférieure à ce paramètre ne doit être créé).",
+    "img_overview_min_size" : "Valeur entière. Dimension minimum des overviews intégrées au fichier image produit (les overviews sont créés jusqu'à ce que leur largeur et hauteur est inférieure à ce paramètre). Valeur par défaut: 256",
+    "img_res": "Nombre flottant. Résolution de l’image produite dans l'unité de dst_srs (mètres ou degrés en fonction des cas). La même résolution est appliquée en x et y.",
+    "img_resampling_method": "Chaine de caractères. Méthode de ré-échantillonage appliquée par GDAL. Supporte les valeurs proposées par GDAL: nearest, bilinear, cubic, cubicspline, lanczos, average",
+    "extracts_volume": "Adresse du volume dans lequel les données extraites doivent être déposée"
+}
+```
 
 Réponse (HTTP status codes) :
 201 - Réponse positive
@@ -116,30 +121,34 @@ Réponse (HTTP status codes) :
 Réponse body:
 
 Document JSON en cas de succès
+```
 {
-    'submitted_request': "reprise de la requête entrante sous forme de dictionnaire JSon",
-    'datetime': 'Chaine de caractère au format ISO-8601. Par ex: 2017-06-29T18:00:55Z',
-    'possible_requests': {
-        'status': {
-            'url': 'http://localhost:5000/jobs/{task_id}',
-            'verb': 'GET'
+    "submitted_request": "reprise de la requête entrante sous forme de dictionnaire JSon",
+    "datetime": "Chaine de caractère au format ISO-8601. Par ex: 2017-06-29T18:00:55Z",
+    "possible_requests": {
+        "status": {
+            "url": "http://localhost:5000/jobs/{task_id}",
+            "verb": "GET"
         },
-        'abort': {
-            'payload': {'status': 'STOP_REQUESTED'},
-            'url': 'http://localhost:5000/jobs/{task_id}',
-            'verb': 'PUT'}
+        "abort": {
+            "payload": {"status": "STOP_REQUESTED"},
+            "url": "http://localhost:5000/jobs/{task_id}",
+            "verb": "PUT"}
         },
     'status': 'SUBMITTED',
     'task_id': 'Identifiant unique sous forme de chaine de caractère. Par ex 5dbaab61-4321-4179-956e-b036a951f215'
 }
+```
 
 Document JSON en cas d'échec à la validation 
+```
 {
     "status": "ERROR",
     "detail": "Raison détaillée de l'erreur",
     "incoming_post_data": "reprise de la payload d'entrée",
     "exception": "Optionnel. Texte associée à l'exception Python"
 }
+```
 
 ### Opération : consulter l’avancement d’une extraction
 
@@ -158,7 +167,7 @@ Réponse (HTTP status codes) :
 
 Réponse body:
 Document JSON
-
+```
 {
     "task_id: "identifiant de la tache",
     "status": "SUBMITTED, STARTED, PROGRESS, SUCCESS, STOP_REQUESTED, STOPPED ou FAILED",
@@ -166,25 +175,25 @@ Document JSON
     "pid": "identifiant du processus sur le worker prenant en charge la tache. Présent pour status = STARTED ou PROGRESS",
     "request": "reprise de la requête initiale passée à la commande d'extraction",
     "possible_requests": {
-        'status': {
-            'url': 'http://localhost:5000/jobs/{task_id}',
-            'verb': 'GET'
+        "status": {
+            "url": "http://localhost:5000/jobs/{task_id}",
+            "verb": "GET"
         },
-        'abort': {
-            'payload': {'status': 'STOP_REQUESTED'},
-            'url': 'http://localhost:5000/jobs/{task_id}',
-            'verb': 'PUT'}
+        "abort": {
+            "payload": {"status": "STOP_REQUESTED"},
+            "url": "http://localhost:5000/jobs/{task_id}",
+            "verb": "PUT"}
         },
-        'download' :  {  # uniquement présent pour status = SUCCESS
-            'url': 'http://localhost:5000/jobs/{task_id}/download',
-            'verb': 'GET'
+        "download" :  {  # uniquement présent pour status = SUCCESS
+            "url": "http://localhost:5000/jobs/{task_id}/download",
+            "verb': "GET"
         }
     },
     "error": "chaine de caractère contenant le message d'erreur.  Présent pour status = FAILED",
     "progress_pct": "nombre entre 0 et 100 avec le pourcentage 'avancement. Présent pour status = PROGRESS",
-    "zip_name": "chemin vers le fichier ZIP contenant le résultat de l'extraction. Présent pour status = SUCCESS",
+    "zip_name": "chemin vers le fichier ZIP contenant le résultat de l'extraction. Présent pour status = SUCCESS"
 }
-
+```
 Détail des états:
 SUBMITTED: tache mise en queue mais non encore dispatchée ou démarrée
 STARTED: tache en cours de démarrage par un worker (état transitoire très court)
@@ -204,9 +213,11 @@ Type de requête : HTTP(S) PUT
 Endpoint: /jobs/{task_id}
 
 Body payload :
+```
 {
-    'status': 'STOP_REQUESTED'
+    "status": "STOP_REQUESTED"
 }
+```
 
 Réponse (HTTP status codes) :
 201 - Cas normal : lorsque la commande d’extraction existe, qu’elle est dans la pile des traitements en attente ou en cours d’exécution et qu’aucune anomalie n’est rencontrée
@@ -217,16 +228,18 @@ Réponse (HTTP status codes) :
 
 Réponse body:
 Document JSON
+```
 {
     "task_id: "identifiant de la tache",
     "status": "STOP_REQUESTED",
     "possible_requests": {
-        'status': {
-            'url': 'http://localhost:5000/jobs/{task_id}',
-            'verb': 'GET'
+        "status": {
+            "url": "http://localhost:5000/jobs/{task_id}",
+            "verb": "GET"
         }
-    },
+    }
 }
+```
 
 ### Opération : obtenir le résultat d'une commande d'extraction
 
