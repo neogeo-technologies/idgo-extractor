@@ -166,6 +166,7 @@ req = { 'user_id': 'my_id',
         },
         'img_res': 0.0000002,
         'dst_srs': 'EPSG:4326',
+        "img_resampling_method": "nearest",
         'img_overviewed': True
 }
 r = submit(req)

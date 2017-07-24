@@ -286,6 +286,11 @@ def is_geom_rectangle(geom):
     bbox_area = (maxx - minx) * (maxy - miny)
     return abs(geom_area - bbox_area) < 1e-3 * bbox_area
 
+def normalize_resampling(method):
+    if method.upper().startswith('NEAR'):
+        return 'NEAR'
+    return method
+
 # Aimed at being run under do_process_in_forked_process()
 def process_raster(process_func_args, gdal_callback, gdal_callback_data):
 
@@ -339,7 +344,7 @@ def process_raster(process_func_args, gdal_callback, gdal_callback_data):
         res = float(req['img_res'])
         warp_options += ' -tr %.15f %.15f' % (res, res)
     if 'img_resampling_method' in req:
-        warp_options += ' -r ' + req['img_resampling_method']
+        warp_options += ' -r ' + normalize_resampling(req['img_resampling_method'])
 
     src_srs_wkt = src_ds.GetProjectionRef()
     src_srs = osr.SpatialReference()
@@ -457,7 +462,7 @@ def process_raster(process_func_args, gdal_callback, gdal_callback_data):
     if 'img_overviewed' in req and req['img_overviewed'] and success:
         method = 'AVERAGE'
         if 'img_resampling_method' in req:
-            method = req['img_resampling_method']
+            method = normalize_resampling(req['img_resampling_method'])
 
         ds = gdal.Open(out_filename, gdal.GA_Update)
 
