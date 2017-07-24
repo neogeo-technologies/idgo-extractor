@@ -29,7 +29,7 @@ def submit(req):
                   headers = { 'Content-Type': 'application/json' })
 
 
-def test(source_name, layer_name = None, rectangular_footprint = False):
+def test(source_name, layer_name = None, rectangular_footprint = False, output_format = 'ESRI Shapefile', extension = None):
 
     minx = 478316.000000
     miny = 4762880.000000
@@ -46,18 +46,20 @@ def test(source_name, layer_name = None, rectangular_footprint = False):
             'user_email_address': 'foo@bar.com',
             'source': source_name,
             'dst_format': {
-                'gdal_driver': 'ESRI Shapefile',
+                'gdal_driver': output_format,
             },
             'footprint': 'POLYGON((%.15g %.15g,%.15g %.15g,%.15g %.15g,%.15g %.15g,%.15g %.15g))' % (x0, y0, minx, maxy, maxx, maxy, maxx, miny, x0, y0),
             'footprint_srs': 'EPSG:32632',
     }
+    if extension is not None:
+        req['dst_format']['extension'] = extension
     if layer_name is not None:
         req['layer'] = layer_name
     r = submit(req)
-    resp = json.loads(r.text)
     if r.status_code != 201:
-        print(resp)
+        print(r.text)
     assert(r.status_code == 201)
+    resp = json.loads(r.text)
     #print(resp)
     assert 'task_id' in resp
 
@@ -85,13 +87,16 @@ def test(source_name, layer_name = None, rectangular_footprint = False):
     zip_data = r.content
 
     # Open result and check there's at least one feature
-    gdal.FileFromMemBuffer('/vsimem/result.zip', zip_data)
-    ds = ogr.Open('/vsizip//vsimem/result.zip')
-    assert(ds is not None)
-    lyr = ds.GetLayer(0)
-    assert(lyr.GetFeatureCount() != 0)
-    ds = None
-    gdal.Unlink('/vsimem/result.zip')
+
+    # There's a bug in GDAL 2.1 regarding reading zipped tab
+    if output_format != 'MapInfo File':
+        gdal.FileFromMemBuffer('/vsimem/result.zip', zip_data)
+        ds = ogr.Open('/vsizip//vsimem/result.zip')
+        assert(ds is not None)
+        lyr = ds.GetLayer(0)
+        assert(lyr.GetFeatureCount() != 0)
+        ds = None
+        gdal.Unlink('/vsimem/result.zip')
 
     if not in_docker:
         # Remove result file
@@ -104,6 +109,12 @@ test(src_gpkg)
 
 print('Testing extracting from GeoPackage source with rectangular footprint')
 test(src_gpkg, rectangular_footprint = True)
+
+print('Testing extracting into GeoJSON')
+test(src_gpkg, output_format = 'GeoJSON', rectangular_footprint = True)
+
+print('Testing extracting into MapInfo tab')
+test(src_gpkg, output_format = 'MapInfo File', extension = 'tab', rectangular_footprint = True)
 
 if not in_docker:
     print('Testing extracting from PostgreSQL source')

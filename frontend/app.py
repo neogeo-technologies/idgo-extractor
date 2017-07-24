@@ -147,6 +147,16 @@ def submit():
         req['dst_format']['gdal_driver'] = dst_format_name
         dst_format = req['dst_format']
 
+    # Check that extension is present for MapInfo File'
+    if dst_format_name.upper() == 'MapInfo File'.upper():
+        if not 'extension' in req['dst_format']:
+            return missing_parameter_error('dst_format.extension', req)
+        extension = req['dst_format']['extension']
+        if not isinstance(dst_format_name, str):
+            return invalid_parameter_type_error('dst_format.extension', req)
+        if extension.lower() not in ['tab', 'mif']:
+            return make_error(_("dst_format.extension should be either 'mif' or 'tab'"))
+
     # Check driver existence and capabilities
     drv = gdal.GetDriverByName(dst_format_name)
     if drv is None:

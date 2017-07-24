@@ -504,7 +504,16 @@ def process_vector(process_func_args, gdal_callback, gdal_callback_data):
 
     dst_format = req['dst_format']
     driver_name = dst_format['gdal_driver'].upper()
-    target_ext = gdal.GetDriverByName(driver_name).GetMetadataItem('DMD_EXTENSION')
+    if 'extension' in dst_format:
+        target_ext = '.' + dst_format['extension']
+    else:
+        target_ext = gdal.GetDriverByName(driver_name).GetMetadataItem('DMD_EXTENSION')
+        if driver_name == 'GEOJSON':
+            target_ext = '.geojson'
+        elif target_ext is not None:
+            target_ext = '.' + target_ext
+        else:
+            target_ext = ''
 
     layer_name_component = ''
     if 'layer' in req:
@@ -514,9 +523,9 @@ def process_vector(process_func_args, gdal_callback, gdal_callback_data):
 
     if os.path.exists(source):
         parts = os.path.splitext(os.path.basename(source))
-        out_filename = os.path.join(tmpdir, parts[0] + '_' + layer_name_component + 'extract.' + target_ext)
+        out_filename = os.path.join(tmpdir, parts[0] + '_' + layer_name_component + 'extract' + target_ext)
     else:
-        out_filename = os.path.join(tmpdir, layer_name_component + 'extract.' + target_ext)
+        out_filename = os.path.join(tmpdir, layer_name_component + 'extract' + target_ext)
 
     dataset_creation_options = upper_dict(dst_format.get('options', {}))
     layer_creation_options = upper_dict(dst_format.get('layer_options', {}))

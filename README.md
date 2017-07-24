@@ -89,6 +89,7 @@ Document JSON
     'dst_format' :
     {
         "gdal_driver":            "Nom court du driver GDAL/OGR. Par exemple GTiff, ESRI Shapefile, GPKG",
+        "extension":              'extension du fichier. Optionnel. Dans le cas où gdal_driver est "MapInfo file", doit être "tab" ou "mif"'
         "options": {
             "nom_de_la_clef":       "valeur"
         },
