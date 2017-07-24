@@ -111,6 +111,67 @@ zip_data = r.content
 gdal.FileFromMemBuffer('/vsimem/result.zip', zip_data)
 ds = gdal.Open('/vsizip//vsimem/result.zip/byte_extract.tif')
 assert(ds is not None)
+assert(ds.RasterXSize == 20)
+assert(ds.RasterYSize == 20)
+ds = None
+gdal.Unlink('/vsimem/result.zip')
+
+# Remove result file
+os.unlink(zip_name)
+
+
+
+
+print("Test valid request 2")
+req = { 'user_id': 'my_id',
+        'user_email_address': 'foo@bar.com',
+        'source': os.getcwd() + '/byte.tif',
+        'dst_format': {
+            'gdal_driver': 'GTiff',
+            'options': {
+                'TILED': 'YES',
+            }
+        },
+        'img_res': 60.0,
+        'dst_srs': 'EPSG:26711',
+        'footprint': 'POLYGON((440100.000 3751000.000,440720.000 3750120.000,441920.000 3750120.000,441920.000 3751320.000,440100.000 3751000.000))',
+        'footprint_srs': 'EPSG:26711',
+        'img_overviewed': True
+}
+r = submit(req)
+assert(r.status_code == 201)
+resp = json.loads(r.text)
+assert 'task_id' in resp
+
+# Wait for result request
+while True:
+    r = requests.get(resp['possible_requests']['status']['url'])
+    assert(r.status_code == 200)
+    resp = json.loads(r.text)
+    print(resp['status'])
+    if resp['status'] == 'SUCCESS':
+        break
+    if not resp['status'] in ('SUBMITTED', 'STARTED', 'PROGRESS'):
+        print(resp)
+        sys.exit(1)
+
+    time.sleep(1)
+
+
+# Get zip name and check it exists
+zip_name = resp['zip_name']
+os.stat(zip_name)
+
+# Test the download REST API
+r = requests.get(resp['possible_requests']['download']['url'])
+zip_data = r.content
+
+# Open result and check there's at least one feature
+gdal.FileFromMemBuffer('/vsimem/result.zip', zip_data)
+ds = gdal.Open('/vsizip//vsimem/result.zip/byte_extract.tif')
+assert(ds is not None)
+assert(ds.RasterXSize == 30)
+assert(ds.RasterYSize == 20)
 ds = None
 gdal.Unlink('/vsimem/result.zip')
 

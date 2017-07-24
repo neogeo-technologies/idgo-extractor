@@ -367,7 +367,12 @@ def process_raster(process_func_args, gdal_callback, gdal_callback_data):
         # Project footprint to target SRS
         footprint_geom.TransformTo(dst_srs)
 
-        cutline_filename = "/vsimem/cutline.json"
+        debug_cutline = False
+        if debug_cutline:
+            cutline_filename = "/tmp/cutline.json"
+        else:
+            cutline_filename = "/vsimem/cutline.json"
+
         cutline_ds = ogr.GetDriverByName('GeoJSON').CreateDataSource(cutline_filename)
         cutline_lyr = cutline_ds.CreateLayer('cutline', srs = dst_srs)
         f = ogr.Feature(cutline_lyr.GetLayerDefn())
@@ -422,7 +427,7 @@ def process_raster(process_func_args, gdal_callback, gdal_callback_data):
         warp_options += " -tr %.18g %.18g" % (src_gt[1], abs(src_gt[5]))
     elif footprint_geom is not None:
         minx, maxx, miny, maxy = footprint_geom.GetEnvelope()
-        warp_options += " -te %.18g %.18g %.18g %.18g" % (minx, maxx, miny, maxy)
+        warp_options += " -te %.18g %.18g %.18g %.18g" % (minx, miny, maxx, maxy)
 
     # In theory, building all power of twos overviews takes 1/3 of the
     # full resolution image ( 1/2^2 + 1/4^2 + ... = 1 /3 )
@@ -455,7 +460,7 @@ def process_raster(process_func_args, gdal_callback, gdal_callback_data):
         success = ret_ds is not None
         gdal.Unlink(tmp_vrt)
 
-    if cutline_filename is not None:
+    if cutline_filename is not None and cutline_filename.startswith("/vsimem/"):
         gdal.Unlink(cutline_filename)
 
     # Build overviews if requested
