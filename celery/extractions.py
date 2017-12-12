@@ -10,8 +10,6 @@ import sys
 import time
 from osgeo import gdal, ogr, osr
 from zipfile import ZipFile
-#from smtplib import SMTP, SMTPException
-#from email.mime.text import MIMEText
 from celery import Task
 from celery.exceptions import Ignore
 from functools import wraps
@@ -29,15 +27,6 @@ logger = logging.getLogger('worker')
 
 env=os.environ
 
-# CAUTION - SMTP_PORT env var might have value tcp://172.17.0.2:25
-# in docker container linked with another "smtp" container.
-# Reason why we're using LOCAL_SMTP_PORT instead
-SMTP_HOST = env.get('LOCAL_SMTP_HOST', 'localhost')
-SMTP_PORT = env.get('LOCAL_SMTP_PORT', 25)
-
-MAIL_FROM = env.get('MAIL_FROM', 'FIXME@FIXME.com')
-MAIL_SUBJECT = env.get('MAIL_SUBJECT', '[IGDO] Votre extraction')
-
 BASE_URL = env.get('BASE_URL', 'http://localhost:8080')
 
 IDGO_EXTRACT_EXTRACTS_DIR = env.get('IDGO_EXTRACT_EXTRACTS_DIR', '/tmp')
@@ -47,18 +36,6 @@ PG_CONNECT_STRING = env.get("PG_CONNECT_STRING")
 
 PROCESS_TIMEOUT = env.get("PROCESS_TIMEOUT", 3600)
 
-#def sendmail(to, message):
-#    msg = MIMEText(message.encode('utf-8'), _charset='utf-8')
-#    msg['Subject'] = MAIL_SUBJECT
-#    msg['From'] = MAIL_FROM
-#    msg['To'] = to
-#    try:
-#        smtpObj = SMTP(SMTP_HOST, SMTP_PORT)
-#        smtpObj.sendmail(MAIL_FROM, [to], msg.as_string())
-#        smtpObj.quit()
-#        logger.info('Successfully sent email to %s' % to)
-#    except SMTPException:
-#        logger.error('Error: unable to send email to %s' % to)
 
 class MyTask(Task):
 
@@ -264,6 +241,7 @@ def do_process_in_forked_process(task, process_func, process_func_args):
     if task.check_if_stop_requested_and_report_progress():
         task.mark_has_stopped_and_raise_ignore()
 
+
 # Return the input dict with all keys put in upper case.
 def upper_dict(d):
     new_d = {}
@@ -286,10 +264,12 @@ def is_geom_rectangle(geom):
     bbox_area = (maxx - minx) * (maxy - miny)
     return abs(geom_area - bbox_area) < 1e-3 * bbox_area
 
+
 def normalize_resampling(method):
     if method.upper().startswith('NEAR'):
         return 'NEAR'
     return method
+
 
 # Aimed at being run under do_process_in_forked_process()
 def process_raster(process_func_args, gdal_callback, gdal_callback_data):
@@ -495,7 +475,6 @@ def process_raster(process_func_args, gdal_callback, gdal_callback_data):
         return { 'success' : True }
 
 
-
 # Aimed at being run under do_process_in_forked_process()
 def process_vector(process_func_args, gdal_callback, gdal_callback_data):
 
@@ -636,7 +615,6 @@ def process_vector(process_func_args, gdal_callback, gdal_callback_data):
         return { 'success' : True }
 
 
-
 @taskmanager.task(name='extraction.do', bind=True, base=MyTask,
                   throws=(OperationalError))
 @task_decorator
@@ -699,8 +677,6 @@ def do(self, req, datetime, is_raster):
         logger.info('Removed dir %s' % tmpdir)
 
     return { 'zip_name': zip_name }
-
-
 
 
 @taskmanager.task(name='extraction.fake_processing', bind=True, base=MyTask,

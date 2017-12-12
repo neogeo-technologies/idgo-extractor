@@ -36,7 +36,6 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - PG_CONNECT_STRING=host=database port=5432 user=geoserver dbname=geoserver password=geoserver
-      - LOCAL_SMTP_HOST=smtp
       - PROCESS_TIMEOUT=7200
       - IDGO_EXTRACT_EXTRACTS_RETENTION_DAYS=1
     volumes:
@@ -71,14 +70,3 @@ services:
       POSTGRES_DB: geoserver
       POSTGRES_PASSWORD: geoserver
       POSTGRES_USER: geoserver
-
-  # SMTP
-  smtp:
-    image: camptocamp/smtp-sink
-
-  webmail:
-    image: camptocamp/sqwebmail
-    ports:
-      - "8081:80"
-    volumes_from:
-      - smtp:rw
