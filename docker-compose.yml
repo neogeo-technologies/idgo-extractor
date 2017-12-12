@@ -35,7 +35,7 @@ services:
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - PG_CONNECT_STRING=host=database port=5432 user=geoserver dbname=geoserver password=geoserver
+      - PG_CONNECT_STRING=host=database port=5432 user=idgo_extract dbname=idgo_extract password=idgo_extract
       - PROCESS_TIMEOUT=7200
       - IDGO_EXTRACT_EXTRACTS_RETENTION_DAYS=1
     volumes:
@@ -67,6 +67,6 @@ services:
     ports:
       - "54322:5432"
     environment:
-      POSTGRES_DB: geoserver
-      POSTGRES_PASSWORD: geoserver
-      POSTGRES_USER: geoserver
+      POSTGRES_DB: idgo_extract
+      POSTGRES_PASSWORD: idgo_extract
+      POSTGRES_USER: idgo_extract
