@@ -12,7 +12,6 @@ RUN apt-get update && \
         python3-pip \
         python3-gdal  \
         python3-yaml \
-        libldap2-dev \
         libsasl2-dev \
     && \
     rm -rf /var/lib/apt/lists/*

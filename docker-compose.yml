@@ -2,8 +2,6 @@ version: '2'
 
 volumes:
   idgo_extract_extracts:
-#  ldap_data:
-#  ldap_conf:
   redis_data:
   idgo_extract_pg_data:
 
@@ -22,11 +20,6 @@ services:
       - UWSGI_SOCKET_TIMEOUT=2400
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
-#      - LDAP_URI=ldap://ldap:389
-#      - LDAP_BINDDN=cn=admin,dc=georchestra,dc=org
-#      - LDAP_PASSWD=secret
-#      - LDAP_ORGS_BASEDN=ou=orgs,dc=georchestra,dc=org
-#      - LDAP_SEARCH_FILTER=(&(cn=%s)(objectClass=groupOfMembers))
       - DEBUG=False
     volumes:
       - idgo_extract_extracts:/extracts:ro
@@ -35,7 +28,7 @@ services:
       - ./common:/common:ro
       - ./tests:/tests
 
-  # Worker
+  # Celery worker
   worker:
     build: celery
     image: idgo/idgo_extract-worker
@@ -61,27 +54,11 @@ services:
     volumes:
       - ./resources/nginx.conf:/etc/nginx/conf.d/default.conf:ro
 
-  # sample geOrchestra LDAP
-  #ldap:
-  #  image: georchestra/ldap
-  #  environment:
-  #    - SLAPD_ORGANISATION=georchestra
-  #    - SLAPD_DOMAIN=georchestra.org
-  #    - SLAPD_PASSWORD=secret
-  #    - SLAPD_ADDITIONAL_MODULES=groupofmembers
-  #  volumes:
-  #    - ldap_data:/var/lib/ldap
-  #    - ldap_config:/etc/ldap
-  #  ports:
-  #    - "3899:389"
-
-
   # Message broker
   redis:
     image: redis:3.2
     volumes:
       - redis_data:/data
-
 
   # Database with idgo_extract (geo)data
   database:
@@ -94,7 +71,6 @@ services:
       POSTGRES_DB: geoserver
       POSTGRES_PASSWORD: geoserver
       POSTGRES_USER: geoserver
-
 
   # SMTP
   smtp:

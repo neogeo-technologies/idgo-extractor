@@ -2,7 +2,6 @@
 
 from flask import Flask, request, make_response, Response
 from werkzeug.datastructures import Headers
-from rights_decorator import rights_required
 import os
 import logging
 import json
@@ -62,7 +61,6 @@ def upper(x):
     return x.upper()
 
 @app.route('/jobs', methods=['POST'])
-@rights_required
 def submit():
     ''' Submit a new task from the JSon content in the POST payload'''
 
@@ -320,7 +318,6 @@ def is_valid_task(result):
     return result.state != 'PENDING'
 
 @app.route('/jobs/<string:task_id>', methods=['GET'])
-@rights_required
 def jobs_get(task_id):
     ''' Get the status of a task '''
 
@@ -361,7 +358,6 @@ def jobs_get(task_id):
     return make_json_response(resp, 200)
 
 @app.route('/jobs/<string:task_id>', methods=['PUT'])
-@rights_required
 def jobs_put(task_id):
     ''' Cancel a task (if {"status": "STOP_REQUESTED"} payload provided) '''
 
@@ -414,7 +410,6 @@ def jobs_put(task_id):
 
 
 @app.route('/jobs/<string:task_id>/download', methods=['GET'])
-@rights_required
 def jobs_download_result(task_id):
     ''' Return the result of a successful task as a .zip attachement '''
 
