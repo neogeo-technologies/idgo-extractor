@@ -25,7 +25,7 @@ from common import taskmanager, service_conf
 
 logger = logging.getLogger('worker')
 
-env=os.environ
+env = os.environ
 
 BASE_URL = env.get('BASE_URL', 'http://localhost:8080')
 
@@ -38,7 +38,6 @@ PROCESS_TIMEOUT = env.get("PROCESS_TIMEOUT", 3600)
 
 
 class MyTask(Task):
-
     # Do that so Celery doesn't set automatically the FAILURE state in
     # case of exceptions (the override to FAILED done in on_failure() can
     # arrive a bit too late if a get status is done in between), hence this
@@ -51,39 +50,39 @@ class MyTask(Task):
     last_state = None
 
     def mark_has_stopped_and_raise_ignore(self):
-        self.update_state(state = 'STOPPED',
-                            meta = { 'pid': os.getpid(),
-                            'hostname' : self.request.hostname,
-                            'request' : self.req })
+        self.update_state(state='STOPPED',
+                          meta={'pid': os.getpid(),
+                                'hostname': self.request.hostname,
+                                'request': self.req})
         logging.info('Task has been stopped')
         raise Ignore()
 
-    def check_if_stop_requested_and_report_progress(self, progress_pct = None):
+    def check_if_stop_requested_and_report_progress(self, progress_pct=None):
         if self.last_state is None or time.time() - self.last_time_state_checked > 1:
             result = self.AsyncResult(self.request.id)
             new_state = result.state
             self.last_state = new_state
             self.last_time_state_checked = time.time()
             if new_state != 'STOP_REQUESTED' and progress_pct is not None:
-                self.update_state(state = 'PROGRESS',
-                            meta = { 'pid': os.getpid(),
-                                    'hostname' : self.request.hostname,
-                                    "progress_pct": progress_pct,
-                                    'request' : self.req })
+                self.update_state(state='PROGRESS',
+                                  meta={'pid': os.getpid(),
+                                        'hostname': self.request.hostname,
+                                        "progress_pct": progress_pct,
+                                        'request': self.req})
 
         return self.last_state == 'STOP_REQUESTED'
 
     # Overriden method from Task. Called when an exception occurs
     def on_failure(self, exc, task_id, args, kwargs, einfo):
-        meta = { 'pid': os.getpid(),
-                'hostname' : self.request.hostname,
+        meta = {'pid': os.getpid(),
+                'hostname': self.request.hostname,
                 "exception": str(einfo.exception),
-                'request' : args[0] }
+                'request': args[0]}
         logging.error('failure occured: ' + str(meta))
         # Change state to FAILED instead of FAILURE, because there are issues
         # on the frontend side with the deserialization of exception. And
         # we want to embed more state in the meta.
-        self.update_state(state = 'FAILED',  meta = meta)
+        self.update_state(state='FAILED', meta=meta)
 
 
 class OperationalError(Exception):
@@ -91,53 +90,53 @@ class OperationalError(Exception):
 
 
 def task_decorator(f):
-    ''' This decorator wraps a task main function so as to report its STARTED
+    """This decorator wraps a task main function so as to report its STARTED
         state before beginning and its SUCCESS state afterwards.
-    '''
+    """
+
     @wraps(f)
     def decorated_function(self, req, datetime, is_raster, **kwargs):
 
         logging.info('Receiving task_id %s, pid %d: %s, created at %s' %
-                    (str(self.request.id), os.getpid(), str(req), datetime))
+                     (str(self.request.id), os.getpid(), str(req), datetime))
 
         self.req = req
         if self.check_if_stop_requested_and_report_progress():
             self.mark_has_stopped_and_raise_ignore()
 
-        self.update_state(state = 'STARTED',
-                        meta = { 'pid': os.getpid(),
-                                'hostname' : self.request.hostname,
-                                'request' : req })
+        self.update_state(state='STARTED',
+                          meta={'pid': os.getpid(),
+                                'hostname': self.request.hostname,
+                                'request': req})
 
         res = f(self, req, datetime, is_raster, **kwargs)
         if res is None:
             res = {}
 
         logging.info('Finished task_id %s, pid %d: %s, created at %s, result %s' %
-                    (str(self.request.id), os.getpid(), str(req), datetime, str(res)))
+                     (str(self.request.id), os.getpid(), str(req), datetime, str(res)))
 
         res['pid'] = os.getpid()
         res['hostname'] = self.request.hostname
         res['request'] = req
 
         # Would be normally done automatically if ignore_result wasn't set
-        self.update_state(state = 'SUCCESS', meta = res)
-
+        self.update_state(state='SUCCESS', meta=res)
 
     return decorated_function
+
 
 # Instanciate a forked process into which process_func is run
 # We do that so that native crash in GDAL is caught up properly
 # If we didn't do that, Celery would not properly record the state as no
 # Python exception would be raised.
 def do_process_in_forked_process(task, process_func, process_func_args):
-
     # GDAL compatible progress callback that assumes to communicate with
     # do_process_in_forked_process() through socket
     def _forked_process_gdal_callback(pct, msg, callback_data):
 
         socket = callback_data[0]
-        socket.send( { 'progress_pct' : pct * 100.0 } )
+        socket.send({'progress_pct': pct * 100.0})
         msg = socket.recv()
         assert 'continue_process' in msg
         continue_process = msg['continue_process']
@@ -149,9 +148,10 @@ def do_process_in_forked_process(task, process_func, process_func_args):
         return 1
 
     def _forked_process_decorator(f):
-        ''' This decorator wraps a task main function dedicated to be run under
+        """This decorator wraps a task main function dedicated to be run under
             do_process_in_forked_process
-        '''
+        """
+
         @wraps(f)
         def decorated_function(process_func_args, callback, callback_data):
 
@@ -161,7 +161,7 @@ def do_process_in_forked_process(task, process_func, process_func_args):
                 res = f(process_func_args, callback, callback_data)
                 stop_requested = callback_data[1]
                 if stop_requested:
-                    res = { 'stopped' : True }
+                    res = {'stopped': True}
                 else:
                     assert 'error' or 'success' in res
                 socket.send(res)
@@ -174,7 +174,7 @@ def do_process_in_forked_process(task, process_func, process_func_args):
                     else:
                         logging.info('End of child on success')
             except Exception as e:
-                res = { 'error': str(e) }
+                res = {'error': str(e)}
                 socket.send(res)
                 socket.close()
                 logging.info('End of child on error')
@@ -183,9 +183,9 @@ def do_process_in_forked_process(task, process_func, process_func_args):
         return decorated_function
 
     parent_conn, child_conn = mp.Pipe()
-    callback_data = [ child_conn, False ]
+    callback_data = [child_conn, False]
     p = mp.Process(target=_forked_process_decorator(process_func),
-                  args=(process_func_args, _forked_process_gdal_callback, callback_data))
+                   args=(process_func_args, _forked_process_gdal_callback, callback_data))
     p.start()
     logging.info('Processing of task forked as PID %d from %d' % (p.pid, os.getpid()))
     child_conn.close()
@@ -209,7 +209,7 @@ def do_process_in_forked_process(task, process_func, process_func_args):
 
             msg = parent_conn.recv()
             if 'success' in msg:
-                task.check_if_stop_requested_and_report_progress(progress_pct = 100.0)
+                task.check_if_stop_requested_and_report_progress(progress_pct=100.0)
                 break
             elif 'stopped' in msg:
                 break
@@ -217,15 +217,15 @@ def do_process_in_forked_process(task, process_func, process_func_args):
                 progress_pct = msg['progress_pct']
 
                 cur_time = time.time()
-                if cur_time - last_time > 5.0: 
+                if cur_time - last_time > 5.0:
                     logging.info('Progress %f' % progress_pct)
                     last_time = cur_time
 
                 if task.check_if_stop_requested_and_report_progress(
-                                            progress_pct = progress_pct):
-                    parent_conn.send( { 'continue_process' : False } )
+                        progress_pct=progress_pct):
+                    parent_conn.send({'continue_process': False})
                 else:
-                    parent_conn.send( { 'continue_process' : True } )
+                    parent_conn.send({'continue_process': True})
             elif 'error' in msg:
                 raise OperationalError(msg['error'])
     finally:
@@ -251,9 +251,8 @@ def upper_dict(d):
 
 
 def create_scaled_progress(pct_min, pct_max, gdal_callback):
-
-    def scaled_progress_cbk( pct, msg, user_data):
-        return gdal_callback( pct_min + (pct_max - pct_min) * pct, msg, user_data)
+    def scaled_progress_cbk(pct, msg, user_data):
+        return gdal_callback(pct_min + (pct_max - pct_min) * pct, msg, user_data)
 
     return scaled_progress_cbk
 
@@ -273,7 +272,6 @@ def normalize_resampling(method):
 
 # Aimed at being run under do_process_in_forked_process()
 def process_raster(process_func_args, gdal_callback, gdal_callback_data):
-
     (req, tmpdir) = process_func_args
 
     if 'simulate_stuck_process' in req:
@@ -303,8 +301,8 @@ def process_raster(process_func_args, gdal_callback, gdal_callback_data):
     # afterwards.
     if driver_name == 'GTIFF':
         if 'COMPRESS' not in driver_options or \
-            driver_options['COMPRESS'].upper() != 'NONE':
-                can_warp_directly = False
+                        driver_options['COMPRESS'].upper() != 'NONE':
+            can_warp_directly = False
 
     warp_options = ''
     if can_warp_directly:
@@ -354,7 +352,7 @@ def process_raster(process_func_args, gdal_callback, gdal_callback_data):
             cutline_filename = "/vsimem/cutline.json"
 
         cutline_ds = ogr.GetDriverByName('GeoJSON').CreateDataSource(cutline_filename)
-        cutline_lyr = cutline_ds.CreateLayer('cutline', srs = dst_srs)
+        cutline_lyr = cutline_ds.CreateLayer('cutline', srs=dst_srs)
         f = ogr.Feature(cutline_lyr.GetLayerDefn())
         f.SetGeometry(footprint_geom)
         cutline_lyr.CreateFeature(f)
@@ -388,17 +386,19 @@ def process_raster(process_func_args, gdal_callback, gdal_callback_data):
 
     # In the situation of a north-up image where no explicit resolution
     # has been asked, align on source pixel boundaries;
-    if 'img_res' not in req and src_srs.IsSame(dst_srs) and \
-        src_gt[2] == 0.0 and src_gt[4] == 0.0 and src_gt[5] < 0.0:
+    if 'img_res' not in req and src_srs.IsSame(dst_srs) and src_gt[2] == 0.0 and src_gt[4] == 0.0 and src_gt[5] < 0.0:
         raster_minx = src_gt[0]
         raster_miny = src_gt[3] + src_ds.RasterYSize * src_gt[5]
         if footprint_geom is not None:
             minx, maxx, miny, maxy = footprint_geom.GetEnvelope()
             te_minx = raster_minx + max(0, int((minx - raster_minx) / src_gt[1])) * src_gt[1]
             te_miny = raster_miny + max(0, int((miny - raster_miny) / abs(src_gt[5]))) * abs(src_gt[5])
-            te_maxx = raster_minx + min(src_ds.RasterXSize, int(math.ceil((maxx - raster_minx) / src_gt[1]))) * src_gt[1]
-            te_maxy = raster_miny + min(src_ds.RasterYSize, int(math.ceil((maxy - raster_miny) / abs(src_gt[5])))) * abs(src_gt[5])
+            te_maxx = raster_minx + min(src_ds.RasterXSize, int(math.ceil((maxx - raster_minx) / src_gt[1]))) * src_gt[
+                1]
+            te_maxy = raster_miny + min(src_ds.RasterYSize,
+                                        int(math.ceil((maxy - raster_miny) / abs(src_gt[5])))) * abs(src_gt[5])
         else:
+            # TODO: fix minx and miny undefinied
             te_minx = raster_minx
             te_miny = raster_miny
             te_maxx = minx + src_ds.RasterXSize * src_gt[1]
@@ -418,25 +418,25 @@ def process_raster(process_func_args, gdal_callback, gdal_callback_data):
 
     if can_warp_directly:
         logging.info('Invoking gdalwarp %s %s %s' % (src_filename, out_filename, warp_options))
-        ret_ds = gdal.Warp(out_filename, src_ds, options = warp_options,
-                        callback = gdal_callback,
-                        callback_data = gdal_callback_data)
+        ret_ds = gdal.Warp(out_filename, src_ds, options=warp_options,
+                           callback=gdal_callback,
+                           callback_data=gdal_callback_data)
         success = ret_ds is not None
         ret_ds = None
     else:
         tmp_vrt = out_filename + '.vrt'
         logging.info('Invoking gdalwarp %s %s %s' % (src_filename, tmp_vrt, warp_options))
-        tmp_ds = gdal.Warp(tmp_vrt, src_ds, options = warp_options)
+        tmp_ds = gdal.Warp(tmp_vrt, src_ds, options=warp_options)
         if tmp_ds is None:
-            return { 'error': gdal.GetLastErrorMsg() }
+            return {'error': gdal.GetLastErrorMsg()}
         translate_options = '-of ' + driver_name
         for option in driver_options:
             translate_options += ' -co %s=%s' % (option, driver_options[option])
         logging.info('Invoking gdal_translate %s %s %s' % (tmp_vrt, out_filename, translate_options))
         ret_ds = gdal.Translate(out_filename, tmp_ds,
-                             options = translate_options,
-                             callback = create_scaled_progress(0, pct_max, gdal_callback),
-                             callback_data = gdal_callback_data)
+                                options=translate_options,
+                                callback=create_scaled_progress(0, pct_max, gdal_callback),
+                                callback_data=gdal_callback_data)
         success = ret_ds is not None
         gdal.Unlink(tmp_vrt)
 
@@ -456,28 +456,25 @@ def process_raster(process_func_args, gdal_callback, gdal_callback_data):
         ysize = ds.RasterYSize
         ratio = 1
         ratios = []
-        while  xsize / ratio >= img_overview_min_size or \
-               ysize / ratio >= img_overview_min_size:
+        while xsize / ratio >= img_overview_min_size or ysize / ratio >= img_overview_min_size:
             ratio *= 2
             ratios.append(ratio)
         if len(ratios) > 0:
-            logging.info('Invoking gdaladdo -r %s %s %s' % \
-                    (method, out_filename, ' '.join(str(r) for r in ratios)))
-            ret = ds.BuildOverviews( method, ratios,
-                            callback = create_scaled_progress(pct_max, 1.0, gdal_callback),
-                            callback_data = gdal_callback_data)
+            logging.info('Invoking gdaladdo -r %s %s %s' % (method, out_filename, ' '.join(str(r) for r in ratios)))
+            ret = ds.BuildOverviews(method, ratios,
+                                    callback=create_scaled_progress(pct_max, 1.0, gdal_callback),
+                                    callback_data=gdal_callback_data)
             success = ret == 0
         ds = None
 
     if not success:
-        return { 'error': gdal.GetLastErrorMsg() }
+        return {'error': gdal.GetLastErrorMsg()}
     else:
-        return { 'success' : True }
+        return {'success': True}
 
 
 # Aimed at being run under do_process_in_forked_process()
 def process_vector(process_func_args, gdal_callback, gdal_callback_data):
-
     (req, tmpdir) = process_func_args
 
     if 'simulate_stuck_process' in req:
@@ -542,9 +539,9 @@ def process_vector(process_func_args, gdal_callback, gdal_callback_data):
         translate_options += ' -t_srs ' + req['dst_srs']
 
     if 'layer' in req:
-        layers = [ src_ds.GetLayerByName(req['layer']) ]
+        layers = [src_ds.GetLayerByName(req['layer'])]
     else:
-        layers = [ src_ds.GetLayer(i) for i in range(src_ds.GetLayerCount()) ]
+        layers = [src_ds.GetLayer(i) for i in range(src_ds.GetLayerCount())]
 
     base_translate_options = translate_options
 
@@ -569,7 +566,8 @@ def process_vector(process_func_args, gdal_callback, gdal_callback_data):
                     if len(parts) == 2:
                         schema_name = parts[0]
                         table_name = parts[1]
-                        sql = "SELECT srid FROM geometry_columns WHERE f_table_name = '%s' AND f_schema_name = '%s'" % (table_name, schema_name)
+                        sql = "SELECT srid FROM geometry_columns WHERE f_table_name = '%s' AND f_schema_name = '%s'" % (
+                            table_name, schema_name)
                     else:
                         sql = "SELECT srid FROM geometry_columns WHERE f_table_name = '%s'" % layer.GetName()
                     sql_lyr = src_ds.ExecuteSQL(sql)
@@ -580,12 +578,14 @@ def process_vector(process_func_args, gdal_callback, gdal_callback_data):
                     src_ds.ReleaseResultSet(sql_lyr)
                     if srid is None:
                         raise OperationalError('Cannot find PostGIS SRID matching layer %s' % layer.GetName())
-                    translate_options += ' -where "ST_Intersects(%s, ST_GeomFromEWKT(\'SRID=%d;%s\'))"' % (layer.GetGeometryColumn(), srid, footprint_geom.ExportToWkt())
+                    translate_options += ' -where "ST_Intersects(%s, ST_GeomFromEWKT(\'SRID=%d;%s\'))"' % (
+                        layer.GetGeometryColumn(), srid, footprint_geom.ExportToWkt())
                 else:
                     geom_col = layer.GetGeometryColumn()
                     if geom_col == '':
                         geom_col = 'geometry'
-                    translate_options += ' -dialect SQLite -sql "SELECT * FROM \"%s\" WHERE ST_Intersects(%s, ST_GeomFromText(\'%s\'))"' % (layer.GetName(), geom_col, footprint_geom.ExportToWkt())
+                    translate_options += ' -dialect SQLite -sql "SELECT * FROM \"%s\" WHERE ST_Intersects(%s, ST_GeomFromText(\'%s\'))"' % (
+                    layer.GetName(), geom_col, footprint_geom.ExportToWkt())
                     add_layer_name = False
             else:
                 minx, maxx, miny, maxy = footprint_geom.GetEnvelope()
@@ -595,13 +595,13 @@ def process_vector(process_func_args, gdal_callback, gdal_callback_data):
             translate_options += ' "' + layer.GetName() + '"'
 
         cbk = create_scaled_progress(float(idx) / len(layers),
-                                     float(idx+1) / len(layers),
+                                     float(idx + 1) / len(layers),
                                      gdal_callback)
         logging.info('Invoking ogr2ogr %s %s %s' % (out_filename, source, translate_options))
         out_ds = gdal.VectorTranslate(out_filename_or_ds, src_ds,
-                                    options = translate_options,
-                                    callback = cbk,
-                                    callback_data = gdal_callback_data)
+                                      options=translate_options,
+                                      callback=cbk,
+                                      callback_data=gdal_callback_data)
         if out_ds is None or out_ds != 0:
             break
         out_filename_or_ds = out_ds
@@ -610,16 +610,15 @@ def process_vector(process_func_args, gdal_callback, gdal_callback_data):
     out_ds = None
 
     if not success:
-        return { 'error': gdal.GetLastErrorMsg() }
+        return {'error': gdal.GetLastErrorMsg()}
     else:
-        return { 'success' : True }
+        return {'success': True}
 
 
 @taskmanager.task(name='extraction.do', bind=True, base=MyTask,
                   throws=(OperationalError))
 @task_decorator
 def do(self, req, datetime, is_raster):
-
     extracts_volume = IDGO_EXTRACT_EXTRACTS_DIR
     if service_conf is not None:
         extracts_volume = service_conf.get('extracts_volume', extracts_volume)
@@ -640,10 +639,10 @@ def do(self, req, datetime, is_raster):
             if (now - creation) // (24 * 3600) >= IDGO_EXTRACT_EXTRACTS_RETENTION_DAYS:
                 try:
                     os.unlink(file)
-                    logger.info('Removed file %s because it was older than %s day(s)' % (f, IDGO_EXTRACT_EXTRACTS_RETENTION_DAYS))
+                    logger.info('Removed file %s because it was older than %s day(s)' % (
+                        f, IDGO_EXTRACT_EXTRACTS_RETENTION_DAYS))
                 except Exception:
                     pass
-
 
     extraction_id = 'IDGO_EXTRACT_{0}'.format(self.request.id)
     tmpdir = tempfile.mkdtemp(dir=extracts_volume, prefix="%s-" % extraction_id)
@@ -676,22 +675,20 @@ def do(self, req, datetime, is_raster):
         shutil.rmtree(tmpdir)
         logger.info('Removed dir %s' % tmpdir)
 
-    return { 'zip_name': zip_name }
+    return {'zip_name': zip_name}
 
 
 @taskmanager.task(name='extraction.fake_processing', bind=True, base=MyTask,
                   throws=(OperationalError))
 @task_decorator
 def fake_processing(self, req, datetime, is_raster):
-
     total_iters = 20
     for i in range(total_iters):
         logging.info('Step %d' % i)
         if self.check_if_stop_requested_and_report_progress(
-                    progress_pct = 100.0 * i / total_iters):
+                progress_pct=100.0 * i / total_iters):
             self.mark_has_stopped_and_raise_ignore()
 
         time.sleep(1)
-        if 'simulate_failure_at_step' in req and \
-            req['simulate_failure_at_step'] == i:
+        if 'simulate_failure_at_step' in req and req['simulate_failure_at_step'] == i:
             raise OperationalError('Simulate failure')
