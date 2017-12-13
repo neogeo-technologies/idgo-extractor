@@ -16,9 +16,13 @@ elif os.path.exists('/common'):
     sys.path.append('/common')
 from common import taskmanager
 
+
 # To make pyflakes happy. Make builtins.__dict__['_'] of gettext active again
 def _(x): return x
+
+
 del sys.modules[__name__].__dict__['_']
+
 
 # create the app:
 app = Flask(__name__)
@@ -28,6 +32,7 @@ logger = logging.getLogger('app')
 env = os.environ
 DEBUG = env.get('DEBUG', 'False')
 
+
 def make_json_response(json_response, status):
     return make_response(json.dumps(json_response),
                          status,
@@ -35,34 +40,40 @@ def make_json_response(json_response, status):
 
 
 def make_json_load_error(e):
-    json_response = { "status": "ERROR",
-                      "detail": _("Exception while decoding incoming post data"),
-                      "incoming_post_data": str(request.data),
-                      "exception": str(e.__class__.__name__) + ': ' + str(e) }
+    json_response = {"status": "ERROR",
+                     "detail": _("Exception while decoding incoming post data"),
+                     "incoming_post_data": str(request.data),
+                     "exception": str(e.__class__.__name__) + ': ' + str(e)}
     return make_json_response(json_response, 400)
 
-def make_error(error_msg, req = None, http_status = 400):
-    json_response = { "status": "ERROR",
-                      "detail": error_msg }
+
+def make_error(error_msg, req=None, http_status=400):
+    json_response = {"status": "ERROR",
+                     "detail": error_msg}
     if req:
         json_response['request'] = req
     return make_json_response(json_response, http_status)
 
+
 def missing_parameter_error(parameter_name, req):
     return make_error(_("Parameter '%s' is missing") % parameter_name, req)
+
 
 def invalid_parameter_type_error(parameter_name, req):
     return make_error(_("Parameter '%s' has not expected type") % parameter_name, req)
 
+
 def get_current_datetime():
     return time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
+
 
 def upper(x):
     return x.upper()
 
+
 @app.route('/jobs', methods=['POST'])
 def submit():
-    ''' Submit a new task from the JSon content in the POST payload'''
+    """Submit a new task from the JSon content in the POST payload"""
 
     try:
         req = json.loads(request.data.decode('UTF-8'))
@@ -71,25 +82,25 @@ def submit():
     if type(req) != dict:
         return make_error(_("Payload should be a JSon dictionary"))
 
-    required_parameters = [ ('user_id', [str]),
-                            ('user_email_address', [str]),
-                            ('source', [str]),
-                            ('dst_format', [str,dict]) ]
+    required_parameters = [('user_id', [str]),
+                           ('user_email_address', [str]),
+                           ('source', [str]),
+                           ('dst_format', [str, dict])]
     for (k, accepted_types) in required_parameters:
         if k not in req:
             return missing_parameter_error(k, req)
         if type(req[k]) not in accepted_types:
             return invalid_parameter_type_error(k, req)
 
-    optional_parameters = [ ('dst_srs', [str]),
-                            ('footprint', [str,dict]),
-                            ('footprint_srs', [str]),
-                            ('img_resampling_method', [str]),
-                            ('img_res', [int,float]),
-                            ('img_overviewed',[bool]),
-                            ('img_overview_min_size',[int]),
-                            ('extracts_volume',[str])
-                          ]
+    optional_parameters = [('dst_srs', [str]),
+                           ('footprint', [str, dict]),
+                           ('footprint_srs', [str]),
+                           ('img_resampling_method', [str]),
+                           ('img_res', [int, float]),
+                           ('img_overviewed', [bool]),
+                           ('img_overview_min_size', [int]),
+                           ('extracts_volume', [str])
+                           ]
     for (k, accepted_types) in optional_parameters:
         if k in req and type(req[k]) not in accepted_types:
             return invalid_parameter_type_error(k, req)
@@ -133,7 +144,7 @@ def submit():
     dst_format = req['dst_format']
     dst_format_name = None
     if isinstance(dst_format, dict):
-        if not 'gdal_driver' in dst_format:
+        if 'gdal_driver' not in dst_format:
             return missing_parameter_error('dst_format.gdal_driver', req)
         dst_format_name = dst_format['gdal_driver']
         if not isinstance(dst_format_name, str):
@@ -147,7 +158,7 @@ def submit():
 
     # Check that extension is present for MapInfo File'
     if dst_format_name.upper() == 'MapInfo File'.upper():
-        if not 'extension' in req['dst_format']:
+        if 'extension' not in req['dst_format']:
             return missing_parameter_error('dst_format.extension', req)
         extension = req['dst_format']['extension']
         if not isinstance(dst_format_name, str):
@@ -252,7 +263,7 @@ def submit():
 
     if 'img_resampling_method' in req:
         img_resampling_method = req['img_resampling_method'].lower()
-        if not img_resampling_method in ('nearest', 'bilinear', 'cubic',
+        if img_resampling_method not in ('nearest', 'bilinear', 'cubic',
                                          'cubicspline', 'lanczos', 'average'):
             return make_error(_("img_resampling_method value should be one "
                                 "of 'nearest', 'bilinear', 'cubic', "
@@ -284,29 +295,30 @@ def submit():
 
     if 'fake_processing' in req:
         task_result = taskmanager.send_task('extraction.fake_processing',
-                                            args=[ req, dt, is_raster ])
+                                            args=[req, dt, is_raster])
     else:
         task_result = taskmanager.send_task('extraction.do',
-                                            args=[ req, dt, is_raster ])
+                                            args=[req, dt, is_raster])
     task_id = task_result.id
-    task_result.backend.store_result(task_id, { 'request' : req } , 'SUBMITTED')
+    task_result.backend.store_result(task_id, {'request': req}, 'SUBMITTED')
 
-    resp = { "status" : "SUBMITTED",
-             "datetime": dt,
-             "submitted_request": req,
-             "possible_requests": {
-                "status": {
-                    "url": request.url_root + "jobs/" + str(task_id),
-                    "verb": "GET"
-                },
-                "abort": {
-                    "url": request.url_root + "jobs/" + str(task_id),
-                    "verb": "PUT",
-                    "payload": { "status": "STOP_REQUESTED" }
-                }
-             },
-             "task_id": str(task_id)
+    resp = {
+        "status": "SUBMITTED",
+        "datetime": dt,
+        "submitted_request": req,
+        "possible_requests": {
+            "status": {
+                "url": request.url_root + "jobs/" + str(task_id),
+                "verb": "GET"
+            },
+            "abort": {
+                "url": request.url_root + "jobs/" + str(task_id),
+                "verb": "PUT",
+                "payload": {"status": "STOP_REQUESTED"}
             }
+        },
+        "task_id": str(task_id)
+    }
 
     return make_json_response(resp, 201)
 
@@ -317,14 +329,15 @@ def is_valid_task(result):
     # SUBMITTED at submit time, PENDING means non existing here
     return result.state != 'PENDING'
 
+
 @app.route('/jobs/<string:task_id>', methods=['GET'])
 def jobs_get(task_id):
-    ''' Get the status of a task '''
+    """Get the status of a task"""
 
     res = taskmanager.AsyncResult(task_id)
 
     if not is_valid_task(res):
-        return make_error(_('Unknown task_id'), http_status = 404)
+        return make_error(_('Unknown task_id'), http_status=404)
 
     possible_requests = {
         "status": {
@@ -336,18 +349,20 @@ def jobs_get(task_id):
         possible_requests['abort'] = {
             "url": request.url_root + "jobs/" + str(task_id),
             "verb": "PUT",
-            "payload": { "status": "STOP_REQUESTED" }
+            "payload": {"status": "STOP_REQUESTED"}
         }
 
     if res.state == 'SUCCESS':
-        possible_requests['download'] =  {
+        possible_requests['download'] = {
             "url": request.url_root + "jobs/" + str(task_id) + "/download",
             "verb": "GET"
         }
 
-    resp = { "task_id": str(task_id),
-             "possible_requests": possible_requests,
-             "status": str(res.state) }
+    resp = {
+        "task_id": str(task_id),
+        "possible_requests": possible_requests,
+        "status": str(res.state)
+    }
 
     info = res.info
     if not isinstance(info, dict):
@@ -357,9 +372,10 @@ def jobs_get(task_id):
             resp[k] = info[k]
     return make_json_response(resp, 200)
 
+
 @app.route('/jobs/<string:task_id>', methods=['PUT'])
 def jobs_put(task_id):
-    ''' Cancel a task (if {"status": "STOP_REQUESTED"} payload provided) '''
+    """Cancel a task (if {"status": "STOP_REQUESTED"} payload provided)"""
 
     try:
         req = json.loads(request.data.decode('UTF-8'))
@@ -368,41 +384,43 @@ def jobs_put(task_id):
     if type(req) != dict:
         return make_error(_("Payload should be a JSon dictionary"))
 
-    if not 'status' in req:
+    if 'status' not in req:
         return missing_parameter_error('status', req)
     if req['status'] != 'STOP_REQUESTED':
         return make_error(_('Expecting {"status": "STOP_REQUESTED"}'), req)
 
     res = taskmanager.AsyncResult(task_id)
     if not is_valid_task(res):
-        return make_error(_('Unknown task_id'), http_status = 404)
+        return make_error(_('Unknown task_id'), http_status=404)
     elif res.state == 'STOPPED':
-        return make_error(_('Task already aborted'), http_status = 409)
+        return make_error(_('Task already aborted'), http_status=409)
     elif res.state == 'STOP_REQUESTED':
-        return make_error(_('Task already in abortion'), http_status = 409)
+        return make_error(_('Task already in abortion'), http_status=409)
     elif res.state == 'SUCCESS':
         return make_error(_('Task already finished successfully'),
-                          http_status = 409)
+                          http_status=409)
     elif res.state == 'FAILED':
         return make_error(_('Task already finished in failure'),
-                          http_status = 409)
+                          http_status=409)
 
     terminate = False
     if 'hard_kill' in req and req['hard_kill']:
         terminate = True
-    taskmanager.control.revoke(task_id, terminate = terminate)
+    taskmanager.control.revoke(task_id, terminate=terminate)
     res.backend.store_result(res.id, res.info, 'STOP_REQUESTED')
 
-    possible_requests =  {
+    possible_requests = {
         "status": {
             "url": request.url_root + "jobs/" + str(task_id),
             "verb": "GET"
         }
     }
 
-    resp = { "task_id": str(task_id),
-            "possible_requests": possible_requests,
-             "status": str(res.state) }
+    resp = {
+        "task_id": str(task_id),
+        "possible_requests": possible_requests,
+        "status": str(res.state)
+    }
     info = res.info
     for k in info:
         resp[k] = info[k]
@@ -411,19 +429,19 @@ def jobs_put(task_id):
 
 @app.route('/jobs/<string:task_id>/download', methods=['GET'])
 def jobs_download_result(task_id):
-    ''' Return the result of a successful task as a .zip attachement '''
+    """Return the result of a successful task as a .zip attachement"""
 
     res = taskmanager.AsyncResult(task_id)
 
     if not is_valid_task(res):
-        return make_error(_('Unknown task_id'), http_status = 404)
+        return make_error(_('Unknown task_id'), http_status=404)
     elif res.state != 'SUCCESS':
-        return make_error(_('Task is not in SUCCESS state'), http_status = 409)
+        return make_error(_('Task is not in SUCCESS state'), http_status=409)
 
-    filepath = res.info['zip_name']
+    file_path = res.info['zip_name']
 
-    def generate(filepath):
-        with open(filepath, 'rb') as f:
+    def generate(fp):
+        with open(fp, 'rb') as f:
             while True:
                 data = f.read(4096)
                 if not data:
@@ -433,8 +451,9 @@ def jobs_download_result(task_id):
     headers = Headers()
     headers.add('Content-Type', 'application/zip')
     headers.add('Content-Disposition', 'attachment', filename='%s.zip' % task_id)
-    headers.add('Content-Length', str(os.path.getsize(filepath)))
-    return Response(generate(filepath), headers=headers)
+    headers.add('Content-Length', str(os.path.getsize(file_path)))
+    return Response(generate(file_path), headers=headers)
+
 
 if __name__ == '__main__':
-    app.run(debug=DEBUG=="True")
+    app.run(debug=DEBUG == "True")
