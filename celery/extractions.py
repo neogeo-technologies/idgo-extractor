@@ -56,11 +56,13 @@ class MyTask(Task):
     end_datetime = None
 
     def mark_has_stopped_and_raise_ignore(self):
+        self.end_datetime = get_current_datetime()
         self.update_state(state='STOPPED',
                           meta={'pid': os.getpid(),
                                 'hostname': self.request.hostname,
+                                "start_datetime": self.start_datetime,
+                                "end_datetime": self.end_datetime,
                                 'request': self.req})
-        self.end_datetime = get_current_datetime()
         logging.info('Task has been stopped')
         raise Ignore()
 
@@ -75,17 +77,20 @@ class MyTask(Task):
                                   meta={'pid': os.getpid(),
                                         'hostname': self.request.hostname,
                                         "progress_pct": progress_pct,
+                                        "start_datetime": self.start_datetime,
                                         'request': self.req})
 
         return self.last_state == 'STOP_REQUESTED'
 
     # Overriden method from Task. Called when an exception occurs
     def on_failure(self, exc, task_id, args, kwargs, einfo):
+        self.end_datetime = get_current_datetime()
         meta = {'pid': os.getpid(),
                 'hostname': self.request.hostname,
                 "exception": str(einfo.exception),
+                "start_datetime": self.start_datetime,
+                "end_datetime": self.end_datetime,
                 'request': args[0]}
-        self.end_datetime = get_current_datetime()
         logging.error('Failure occured: ' + str(meta))
         # Change state to FAILED instead of FAILURE, because there are issues
         # on the frontend side with the deserialization of exception. And
