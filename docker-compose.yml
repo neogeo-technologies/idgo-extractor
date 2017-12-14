@@ -22,7 +22,7 @@ services:
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - DEBUG=False
     volumes:
-      - idgo_extract_extracts:/extracts:ro
+      - idgo_extract_extracts:/extracts
       - ./resources/extract_service_conf.yml:/etc/extract_service_conf.yml:ro
       - ./resources/locale:/locale:ro
       - ./common:/common:ro
