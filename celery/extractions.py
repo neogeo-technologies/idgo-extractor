@@ -37,6 +37,10 @@ PG_CONNECT_STRING = env.get("PG_CONNECT_STRING")
 PROCESS_TIMEOUT = env.get("PROCESS_TIMEOUT", 3600)
 
 
+def get_current_datetime():
+    return time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
+
+
 class MyTask(Task):
     # Do that so Celery doesn't set automatically the FAILURE state in
     # case of exceptions (the override to FAILED done in on_failure() can
@@ -46,14 +50,17 @@ class MyTask(Task):
     ignore_result = True
 
     last_time_state_checked = None
-
     last_state = None
+
+    start_datetime = None
+    end_datetime = None
 
     def mark_has_stopped_and_raise_ignore(self):
         self.update_state(state='STOPPED',
                           meta={'pid': os.getpid(),
                                 'hostname': self.request.hostname,
                                 'request': self.req})
+        self.end_datetime = get_current_datetime()
         logging.info('Task has been stopped')
         raise Ignore()
 
@@ -78,7 +85,8 @@ class MyTask(Task):
                 'hostname': self.request.hostname,
                 "exception": str(einfo.exception),
                 'request': args[0]}
-        logging.error('failure occured: ' + str(meta))
+        self.end_datetime = get_current_datetime()
+        logging.error('Failure occured: ' + str(meta))
         # Change state to FAILED instead of FAILURE, because there are issues
         # on the frontend side with the deserialization of exception. And
         # we want to embed more state in the meta.
@@ -107,7 +115,9 @@ def task_decorator(f):
         self.update_state(state='STARTED',
                           meta={'pid': os.getpid(),
                                 'hostname': self.request.hostname,
-                                'request': req})
+                                'request': req
+                                })
+        self.start_datetime = get_current_datetime()
 
         res = f(self, req, datetime, is_raster, **kwargs)
         if res is None:
@@ -119,6 +129,12 @@ def task_decorator(f):
         res['pid'] = os.getpid()
         res['hostname'] = self.request.hostname
         res['request'] = req
+        if self.start_datetime:
+            res['start_datetime'] = self.start_datetime
+        if self.end_datetime:
+            res['end_datetime'] = self.end_datetime
+        else:
+            res['end_datetime'] = get_current_datetime()
 
         # Would be normally done automatically if ignore_result wasn't set
         self.update_state(state='SUCCESS', meta=res)
@@ -203,7 +219,7 @@ def do_process_in_forked_process(task, process_func, process_func_args):
                 logging.info('Did not receive information from child in the last 5 seconds')
                 result = task.AsyncResult(task.request.id)
                 if result.state == 'STOP_REQUESTED':
-                    logging.error('STOP_REQUESTED: Hard kill child !')
+                    logging.error('STOP_REQUESTED: Hard kill child!')
                     p.terminate()
                     task.mark_has_stopped_and_raise_ignore()
 

@@ -269,23 +269,24 @@ def submit():
                                 "of 'nearest', 'bilinear', 'cubic', "
                                 "'cubicspline', 'lanczos' or 'average'"))
 
-    known_parameters = [ 'user_id',
-                       'user_name',
-                       'user_first_name',
-                       'user_company',
-                       'user_email_address',
-                       'user_address',
-                       'source',
-                       'layer',
-                       'dst_format',
-                       'dst_srs',
-                       'footprint',
-                       'footprint_srs',
-                       'img_overviewed',
-                       'img_overview_min_size',
-                       'img_res',
-                       'img_resampling_method',
-                       'extracts_volume'
+    known_parameters = [
+        'user_id',
+        'user_name',
+        'user_first_name',
+        'user_company',
+        'user_email_address',
+        'user_address',
+        'source',
+        'layer',
+        'dst_format',
+        'dst_srs',
+        'footprint',
+        'footprint_srs',
+        'img_overviewed',
+        'img_overview_min_size',
+        'img_res',
+        'img_resampling_method',
+        'extracts_volume'
     ]
     for k in req:
         if k not in known_parameters:
@@ -300,11 +301,11 @@ def submit():
         task_result = taskmanager.send_task('extraction.do',
                                             args=[req, dt, is_raster])
     task_id = task_result.id
-    task_result.backend.store_result(task_id, {'request': req}, 'SUBMITTED')
+    task_result.backend.store_result(task_id=task_id, result={'request': req}, state='SUBMITTED')
 
     resp = {
         "status": "SUBMITTED",
-        "datetime": dt,
+        "submission_datetime": dt,
         "submitted_request": req,
         "possible_requests": {
             "status": {
@@ -366,10 +367,9 @@ def jobs_get(task_id):
 
     info = res.info
     if not isinstance(info, dict):
-        logging.error('info is not a dict')
+        logging.error('res.info is not a dict')
     else:
-        for k in info:
-            resp[k] = info[k]
+        resp.update(info)
     return make_json_response(resp, 200)
 
 
@@ -382,7 +382,7 @@ def jobs_put(task_id):
     except Exception as e:
         return make_json_load_error(e)
     if type(req) != dict:
-        return make_error(_("Payload should be a JSon dictionary"))
+        return make_error(_("Payload should be a JSON dictionary"))
 
     if 'status' not in req:
         return missing_parameter_error('status', req)
@@ -422,8 +422,7 @@ def jobs_put(task_id):
         "status": str(res.state)
     }
     info = res.info
-    for k in info:
-        resp[k] = info[k]
+    resp.update(info)
     return make_json_response(resp, 201)
 
 
