@@ -52,6 +52,7 @@ class MyTask(Task):
     last_time_state_checked = None
     last_state = None
 
+    submission_datetime = None
     start_datetime = None
     end_datetime = None
 
@@ -60,6 +61,7 @@ class MyTask(Task):
         self.update_state(state='STOPPED',
                           meta={'pid': os.getpid(),
                                 'hostname': self.request.hostname,
+                                "submission_datetime": self.submission_datetime,
                                 "start_datetime": self.start_datetime,
                                 "end_datetime": self.end_datetime,
                                 'request': self.req})
@@ -77,6 +79,7 @@ class MyTask(Task):
                                   meta={'pid': os.getpid(),
                                         'hostname': self.request.hostname,
                                         "progress_pct": progress_pct,
+                                        "submission_datetime": self.submission_datetime,
                                         "start_datetime": self.start_datetime,
                                         'request': self.req})
 
@@ -88,6 +91,7 @@ class MyTask(Task):
         meta = {'pid': os.getpid(),
                 'hostname': self.request.hostname,
                 "exception": str(einfo.exception),
+                "submission_datetime": self.submission_datetime,
                 "start_datetime": self.start_datetime,
                 "end_datetime": self.end_datetime,
                 'request': args[0]}
@@ -114,13 +118,16 @@ def task_decorator(f):
                      (str(self.request.id), os.getpid(), str(req), datetime))
 
         self.req = req
+        self.submission_datetime = datetime
+
         if self.check_if_stop_requested_and_report_progress():
             self.mark_has_stopped_and_raise_ignore()
 
         self.update_state(state='STARTED',
                           meta={'pid': os.getpid(),
                                 'hostname': self.request.hostname,
-                                'request': req
+                                'request': req,
+                                'submission_datetime': self.submission_datetime
                                 })
         self.start_datetime = get_current_datetime()
 
@@ -134,6 +141,8 @@ def task_decorator(f):
         res['pid'] = os.getpid()
         res['hostname'] = self.request.hostname
         res['request'] = req
+        if self.submission_datetime:
+            res['submission_datetime'] = self.submission_datetime
         if self.start_datetime:
             res['start_datetime'] = self.start_datetime
         if self.end_datetime:
