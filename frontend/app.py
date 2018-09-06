@@ -270,8 +270,7 @@ def submit():
             footprint_dst_srs.ImportFromEPSG(4326)
             transform = osr.CoordinateTransformation(footprint_src_srs, footprint_dst_srs)
             g.Transform(transform)
-            footprint_as_geojson = g.ExportToJson()
-            print(footprint_as_geojson)
+            footprint_as_geojson = json.loads(g.ExportToJson())
 
         req['footprint_geojson'] = footprint_as_geojson
 
