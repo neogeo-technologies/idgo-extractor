@@ -231,10 +231,10 @@ def submit():
     # Validate footprint and footprint_srs
     if 'footprint' in req:
         footprint = req['footprint']
-        footprint_json = False
+        footprint_is_json = False
         if isinstance(footprint, dict):
             g = ogr.CreateGeometryFromJson(json.dumps(footprint))
-            footprint_json = True
+            footprint_is_json = True
         else:
             g = ogr.CreateGeometryFromWkt(footprint)
 
@@ -249,17 +249,31 @@ def submit():
                               (str(footprint), validity_error), req)
 
         # Normalize footprint to WKT
-        footprint = g.ExportToWkt()
-        req['footprint'] = footprint
+        footprint_as_wkt = g.ExportToWkt()
+        req['footprint'] = footprint_as_wkt
 
+        # SRS
         if 'footprint_srs' not in req:
             return missing_parameter_error('footprint_srs', req)
         footprint_srs = req['footprint_srs']
-        sr = osr.SpatialReference()
-        if sr.SetFromUserInput(footprint_srs) != 0:
+        footprint_src_srs = osr.SpatialReference()
+        if footprint_src_srs.SetFromUserInput(footprint_srs) != 0:
             return make_error(_('%s is not a valid SRS') % footprint_srs, req)
-        if footprint_json and sr.GetAuthorityCode(None) != '4326':
+        if footprint_is_json and footprint_src_srs.GetAuthorityCode(None) != '4326':
             return make_error(_('As footprint is a JSon geometry, footprint_srs should be EPSG:4326'))
+
+        # Add a footprint in GeoJSON in EPSG:4326
+        if footprint_is_json:
+            footprint_as_geojson = footprint
+        else:
+            footprint_dst_srs = osr.SpatialReference()
+            footprint_dst_srs.ImportFromEPSG(4326)
+            transform = osr.CoordinateTransformation(footprint_src_srs, footprint_dst_srs)
+            g.Transform(transform)
+            footprint_as_geojson = g.ExportToJson()
+            print(footprint_as_geojson)
+
+        req['footprint_geojson'] = footprint_as_geojson
 
     if 'img_resampling_method' in req:
         img_resampling_method = req['img_resampling_method'].lower()
@@ -282,6 +296,7 @@ def submit():
         'dst_srs',
         'footprint',
         'footprint_srs',
+        'footprint_geojson',
         'img_overviewed',
         'img_overview_min_size',
         'img_res',

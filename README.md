@@ -140,6 +140,11 @@ Document JSON en cas de succès
 }
 ```
 
+Dans la partie `submitted_request`, 2 subtilités :
+* l'élément footprint est exprimé en WKT même si l'utilisateur l'a fourni en GeoJSON ;
+* un élément footprint_geojson est ajouté et contient la conversion du footprint en GeoJSON 
+(selon la système de coordonnées géographiques EPSG:4326).
+
 Document JSON en cas d'échec à la validation 
 ```
 {
