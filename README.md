@@ -113,6 +113,50 @@ Document JSON
 }
 ```
 
+L'élément dst_format peut intégrer les options de création spécifique du driver GDAL utilisé.
+
+Exemple 1 pour la création d'un fichier GeoTIFF encodé en JPEG, avec une compression de faible qualité, tuilé avec des tuiles de 256 pixels de côté :
+```
+    "dst_format": {
+        "gdal_driver": "GTiff",
+        "options": {
+            "COMPRESS": "JPEG",
+            "JPEG_QUALITY": 50,
+            "TILED": "YES",
+            "BLOCKXSIZE": 256,
+            "BLOCKYSIZE": 256
+        }
+```
+
+Exemple 2 pour la création d'un fichier GeoTIFF encodé en LZW, tuilé avec des tuiles de 512 pixels de côté et accompagné d'un fichier TFW :
+```
+    "dst_format": {
+        "gdal_driver": "GTiff",
+        "options": {
+            "COMPRESS": "LZW",
+            "TFW": "YES",
+            "TILED": "YES",
+            "BLOCKXSIZE": 512,
+            "BLOCKYSIZE": 512
+        }
+```
+
+Exemple 3 pour la création d'un fichier GeoJSON dont l'arborescence des attributs est supprimée, limitant la précision des coordonnées à 5 chiffres après la virgule, intégrant une BBOX et une description de la couche :
+```
+    "dst_format": {
+        "gdal_driver": "GeoJSON",
+        "options": {
+            "FLATTEN_NESTED_ATTRIBUTES": "YES",
+            "NESTED_ATTRIBUTE_SEPARATOR": "-"
+        },
+        "layer_options": {
+            "WRITE_BBOX": "YES",
+            "COORDINATE_PRECISION": 4,
+            "DESCRIPTION": "This is just an example description"
+        }
+```
+
+
 Réponse (HTTP status codes) :
 201 - Réponse positive
 400 - Dans le cas où les paramètres de la requête ne correspondent pas aux spécifications qui suivent
@@ -140,7 +184,7 @@ Document JSON en cas de succès
 }
 ```
 
-Dans la partie `submitted_request`, 2 subtilités :
+Dans la partie `submitted_request` de la réponse, 2 subtilités :
 * l'élément footprint est exprimé en WKT même si l'utilisateur l'a fourni en GeoJSON ;
 * un élément footprint_geojson est ajouté et contient la conversion du footprint en GeoJSON 
 (selon la système de coordonnées géographiques EPSG:4326).
