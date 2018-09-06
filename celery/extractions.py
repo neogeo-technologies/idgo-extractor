@@ -428,11 +428,10 @@ def process_raster(process_func_args, gdal_callback, gdal_callback_data):
             te_maxy = raster_miny + min(src_ds.RasterYSize,
                                         int(math.ceil((maxy - raster_miny) / abs(src_gt[5])))) * abs(src_gt[5])
         else:
-            # TODO: fix minx and miny undefinied
             te_minx = raster_minx
             te_miny = raster_miny
-            te_maxx = minx + src_ds.RasterXSize * src_gt[1]
-            te_maxy = miny + src_ds.RasterYSize * abs(src_gt[5])
+            te_maxx = raster_minx + src_ds.RasterXSize * src_gt[1]
+            te_maxy = raster_miny + src_ds.RasterYSize * abs(src_gt[5])
         warp_options += " -te %.18g %.18g %.18g %.18g" % (te_minx, te_miny, te_maxx, te_maxy)
         warp_options += " -tr %.18g %.18g" % (src_gt[1], abs(src_gt[5]))
     elif footprint_geom is not None:
