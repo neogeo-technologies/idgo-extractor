@@ -64,7 +64,7 @@ class MyTask(Task):
                                 "submission_datetime": self.submission_datetime,
                                 "start_datetime": self.start_datetime,
                                 "end_datetime": self.end_datetime,
-                                'request': self.req})
+                                'query': self.req})
         logging.info('Task has been stopped')
         raise Ignore()
 
@@ -81,7 +81,7 @@ class MyTask(Task):
                                         "progress_pct": progress_pct,
                                         "submission_datetime": self.submission_datetime,
                                         "start_datetime": self.start_datetime,
-                                        'request': self.req})
+                                        'query': self.req})
 
         return self.last_state == 'STOP_REQUESTED'
 
@@ -94,7 +94,7 @@ class MyTask(Task):
                 "submission_datetime": self.submission_datetime,
                 "start_datetime": self.start_datetime,
                 "end_datetime": self.end_datetime,
-                'request': args[0]}
+                'query': args[0]}
         logging.error('Failure occured: ' + str(meta))
         # Change state to FAILED instead of FAILURE, because there are issues
         # on the frontend side with the deserialization of exception. And
@@ -126,7 +126,7 @@ def task_decorator(f):
         self.update_state(state='STARTED',
                           meta={'pid': os.getpid(),
                                 'hostname': self.request.hostname,
-                                'request': req,
+                                'query': req,
                                 'submission_datetime': self.submission_datetime
                                 })
         self.start_datetime = get_current_datetime()
@@ -140,7 +140,7 @@ def task_decorator(f):
 
         res['pid'] = os.getpid()
         res['hostname'] = self.request.hostname
-        res['request'] = req
+        res['query'] = req
         if self.submission_datetime:
             res['submission_datetime'] = self.submission_datetime
         if self.start_datetime:

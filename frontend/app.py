@@ -51,7 +51,7 @@ def make_error(error_msg, req=None, http_status=400):
     json_response = {"status": "ERROR",
                      "detail": error_msg}
     if req:
-        json_response['request'] = req
+        json_response['query'] = req
     return make_json_response(json_response, http_status)
 
 
@@ -315,12 +315,12 @@ def submit():
         task_result = taskmanager.send_task('extraction.do',
                                             args=[req, dt, is_raster])
     task_id = task_result.id
-    task_result.backend.store_result(task_id=task_id, result={'request': req}, state='SUBMITTED')
+    task_result.backend.store_result(task_id=task_id, result={'query': req}, state='SUBMITTED')
 
     resp = {
         "status": "SUBMITTED",
         "submission_datetime": dt,
-        "submitted_request": req,
+        "query": req,
         "possible_requests": {
             "status": {
                 "url": request.url_root + "jobs/" + str(task_id),

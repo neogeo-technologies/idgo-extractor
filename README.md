@@ -167,7 +167,7 @@ Réponse body:
 Document JSON en cas de succès
 ```
 {
-    "submitted_request": "reprise de la requête entrante sous forme de dictionnaire JSon",
+    "query": "Reprise de la requête entrante sous forme de dictionnaire JSon",
     "datetime": "Chaine de caractère au format ISO-8601. Par ex: 2017-06-29T18:00:55Z",
     "possible_requests": {
         "status": {
@@ -184,7 +184,7 @@ Document JSON en cas de succès
 }
 ```
 
-Dans la partie `submitted_request` de la réponse, 2 subtilités :
+Dans la partie `query` de la réponse, 2 subtilités :
 * l'élément footprint est exprimé en WKT même si l'utilisateur l'a fourni en GeoJSON ;
 * un élément footprint_geojson est ajouté et contient la conversion du footprint en GeoJSON 
 (selon la système de coordonnées géographiques EPSG:4326).
@@ -222,7 +222,7 @@ Document JSON
     "status": "SUBMITTED, STARTED, PROGRESS, SUCCESS, STOP_REQUESTED, STOPPED ou FAILED",
     "hostname": "nom du worker prenant en charge la tache. Présent pour status = STARTED ou PROGRESS",
     "pid": "identifiant du processus sur le worker prenant en charge la tache. Présent pour status = STARTED ou PROGRESS",
-    "request": "reprise de la requête initiale passée à la commande d'extraction",
+    "query": "reprise de la requête initiale passée à la commande d'extraction",
     "possible_requests": {
         "status": {
             "url": "http://localhost:5000/jobs/{task_id}",
