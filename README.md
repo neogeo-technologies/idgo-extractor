@@ -10,6 +10,9 @@ Le service d’extraction à proprement parler ne propose aucune IHM graphique. 
 
 ## Architecture
 
+Architecture inspirée de l'extracteur de fichiers fonciers de geOrchestra :
+https://github.com/neogeo-technologies/idgo-extractor
+
 ### Technologies utilisées
 - Python 3: langage de programmation
 - Flask: framework pour implémenter l’API web pour lancer une extraction
