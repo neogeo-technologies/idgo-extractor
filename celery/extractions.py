@@ -654,6 +654,7 @@ def process_vector(process_func_args, gdal_callback, gdal_callback_data):
     base_translate_options = translate_options
 
     out_filename_or_ds = out_filename
+    out_ds = None
     for idx, layer in enumerate(layers):
 
         translate_options = base_translate_options
