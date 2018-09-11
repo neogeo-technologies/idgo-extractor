@@ -760,28 +760,6 @@ def do(self, req, datetime, is_raster):
         extracts_volume = service_conf.get("extracts_volume", extracts_volume)
     extracts_volume = req.get("extracts_volume", extracts_volume)
 
-    # Disabled
-    if False:
-        # clean older files
-        now = time.time()
-        for f in os.listdir(extracts_volume):
-            file = os.path.join(extracts_volume, f)
-            if not f.startswith("IDGO_EXTRACT_") or not os.path.isfile(file):
-                continue
-            try:
-                creation = os.path.getctime(file)
-            except Exception:
-                pass
-            if (now - creation) // (24 * 3600) >= IDGO_EXTRACT_EXTRACTS_RETENTION_DAYS:
-                try:
-                    os.unlink(file)
-                    logger.info(
-                        "Removed file %s because it was older than %s day(s)"
-                        % (f, IDGO_EXTRACT_EXTRACTS_RETENTION_DAYS)
-                    )
-                except Exception:
-                    pass
-
     extraction_id = "IDGO_EXTRACT_{0}".format(self.request.id)
     tmpdir = tempfile.mkdtemp(dir=extracts_volume, prefix="%s-" % extraction_id)
     logger.info("Created temp dir %s" % tmpdir)
@@ -792,24 +770,45 @@ def do(self, req, datetime, is_raster):
         else:
             do_process_in_forked_process(self, process_vector, (req, tmpdir))
 
-        # create ZIP archive
-        try:
-            zip_name = os.path.join(extracts_volume, "%s.zip" % extraction_id)
-            with ZipFile(zip_name, "w") as myzip:
-                for root, dirs, files in os.walk(tmpdir):
-                    for file in files:
-                        myzip.write(os.path.join(root, file), file)
+        compress_extract = req.get("compress_extract", True)
+        logger.debug("compress_extract: {}".format(compress_extract))
 
-        except IOError as e:
-            logger.error("IOError while zipping %s" % tmpdir)
-            raise e
+        # Zip extract
+        if compress_extract:
+
+            try:
+                extract_location = os.path.join(
+                    extracts_volume, "%s.zip" % extraction_id
+                )
+                logger.debug("extract_location: {}".format(extract_location))
+                with ZipFile(extract_location, "w") as myzip:
+                    for root, dirs, files in os.walk(tmpdir):
+                        for file in files:
+                            myzip.write(os.path.join(root, file), file)
+            except IOError as e:
+                logger.error(
+                    "IOError while zipping {} into {}".format(tmpdir, extract_location)
+                )
+                raise e
+
+        # Copy directory
+        else:
+            try:
+                extract_location = os.path.join(extracts_volume, extraction_id)
+                logger.debug("extract_location: {}".format(extract_location))
+                shutil.copytree(tmpdir, extract_location)
+            except shutil.Error as e:
+                logger.error(
+                    "Error while copying {} to {}".format(tmpdir, extract_location)
+                )
+                raise e
 
     finally:
         # delete directory after zipping or exception
         shutil.rmtree(tmpdir)
         logger.info("Removed dir %s" % tmpdir)
 
-    return {"zip_name": zip_name}
+    return {"extract_location": extract_location}
 
 
 @taskmanager.task(

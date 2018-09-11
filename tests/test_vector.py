@@ -87,7 +87,7 @@ def test(
 
     # Get zip name and check it exists
     if not in_docker:
-        zip_name = resp["zip_name"]
+        zip_name = resp["extract_location"]
         os.stat(zip_name)
 
     # Test the download REST API

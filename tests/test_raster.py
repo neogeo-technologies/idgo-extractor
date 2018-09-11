@@ -110,7 +110,7 @@ while True:
 
 
 # Get zip name and check it exists
-zip_name = resp["zip_name"]
+zip_name = resp["extract_location"]
 os.stat(zip_name)
 
 # Test the download REST API
@@ -163,7 +163,7 @@ while True:
 
 
 # Get zip name and check it exists
-zip_name = resp["zip_name"]
+zip_name = resp["extract_location"]
 os.stat(zip_name)
 
 # Test the download REST API

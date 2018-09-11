@@ -112,7 +112,8 @@ Document JSON
     "img_overview_min_size" : "Valeur entière. Dimension minimum des overviews intégrées au fichier image produit (les overviews sont créés jusqu'à ce que leur largeur et hauteur est inférieure à ce paramètre). Valeur par défaut: 256",
     "img_res": "Nombre flottant. Résolution de l’image produite dans l'unité de dst_srs (mètres ou degrés en fonction des cas). La même résolution est appliquée en x et y.",
     "img_resampling_method": "Chaine de caractères. Méthode de ré-échantillonage appliquée par GDAL. Supporte les valeurs proposées par GDAL: nearest, bilinear, cubic, cubicspline, lanczos, average",
-    "extracts_volume": "Adresse du volume dans lequel les données extraites doivent être déposées"
+    "extracts_volume": "Adresse du volume dans lequel les données extraites doivent être déposées",
+    "compress_extract": "Booléen JSon. Indique si les données extraites doivent être placées dans une archive. Sinon un répertoire contenant les données est créé. Valeur par défaut : true. Un résultat non compressé ne sera pas disponible au téléchargement."
 }
 ```
 
@@ -243,7 +244,7 @@ Document JSON
     },
     "error": "chaine de caractère contenant le message d'erreur.  Présent pour status = FAILED",
     "progress_pct": "nombre entre 0 et 100 avec le pourcentage 'avancement. Présent pour status = PROGRESS",
-    "zip_name": "chemin vers le fichier ZIP contenant le résultat de l'extraction. Présent pour status = SUCCESS"
+    "extract_location": "chemin vers le fichier ZIP ou le répertoire contenant le résultat de l'extraction. Présent pour status = SUCCESS"
 }
 ```
 Détail des états:

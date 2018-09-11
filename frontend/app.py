@@ -105,6 +105,7 @@ def submit():
         ("img_overviewed", [bool]),
         ("img_overview_min_size", [int]),
         ("extracts_volume", [str]),
+        ("compress_extract", [bool]),
     ]
     for (k, accepted_types) in optional_parameters:
         if k in req and type(req[k]) not in accepted_types:
@@ -344,6 +345,7 @@ def submit():
         "img_res",
         "img_resampling_method",
         "extracts_volume",
+        "compress_extract",
     ]
     for k in req:
         if k not in known_parameters:
@@ -406,7 +408,7 @@ def jobs_get(task_id):
             "payload": {"status": "STOP_REQUESTED"},
         }
 
-    if res.state == "SUCCESS":
+    if res.state == "SUCCESS" and res.info["query"].get("compress_extract", True):
         possible_requests["download"] = {
             "url": request.url_root + "jobs/" + str(task_id) + "/download",
             "verb": "GET",
@@ -484,8 +486,12 @@ def jobs_download_result(task_id):
         return make_error(_("Unknown task_id"), http_status=404)
     elif res.state != "SUCCESS":
         return make_error(_("Task is not in SUCCESS state"), http_status=409)
+    elif not res.info["query"].get("compress_extract", True):
+        return make_error(
+            _("This extract is not available for download"), http_status=404
+        )
 
-    file_path = res.info["zip_name"]
+    file_path = res.info["extract_location"]
 
     def generate(fp):
         with open(fp, "rb") as f:
