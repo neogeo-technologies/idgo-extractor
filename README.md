@@ -112,7 +112,7 @@ Document JSON
     "img_overview_min_size" : "Valeur entière. Dimension minimum des overviews intégrées au fichier image produit (les overviews sont créés jusqu'à ce que leur largeur et hauteur est inférieure à ce paramètre). Valeur par défaut: 256",
     "img_res": "Nombre flottant. Résolution de l’image produite dans l'unité de dst_srs (mètres ou degrés en fonction des cas). La même résolution est appliquée en x et y.",
     "img_resampling_method": "Chaine de caractères. Méthode de ré-échantillonage appliquée par GDAL. Supporte les valeurs proposées par GDAL: nearest, bilinear, cubic, cubicspline, lanczos, average",
-    "extracts_volume": "Adresse du volume dans lequel les données extraites doivent être déposée"
+    "extracts_volume": "Adresse du volume dans lequel les données extraites doivent être déposées"
 }
 ```
 
