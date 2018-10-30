@@ -44,7 +44,7 @@ def get_current_datetime():
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
 
-class MyTask(Task):
+class IdgoExtractorTask(Task):
     # Do that so Celery doesn't set automatically the FAILURE state in
     # case of exceptions (the override to FAILED done in on_failure() can
     # arrive a bit too late if a get status is done in between), hence this
@@ -751,7 +751,7 @@ def process_vector(process_func_args, gdal_callback, gdal_callback_data):
 
 
 @taskmanager.task(
-    name="extraction.do", bind=True, base=MyTask, throws=(OperationalError)
+    name="idgo_extractor.extraction", bind=True, base=IdgoExtractorTask, throws=(OperationalError)
 )
 @task_decorator
 def do(self, req, datetime, is_raster):
@@ -812,10 +812,10 @@ def do(self, req, datetime, is_raster):
 
 
 @taskmanager.task(
-    name="extraction.fake_processing", bind=True, base=MyTask, throws=(OperationalError)
+    name="idgo_extractor.fake_extraction", bind=True, base=IdgoExtractorTask, throws=(OperationalError)
 )
 @task_decorator
-def fake_processing(self, req, datetime, is_raster):
+def fake_extraction(self, req, datetime, is_raster):
     total_iters = 20
     for i in range(total_iters):
         logging.info("Step %d" % i)

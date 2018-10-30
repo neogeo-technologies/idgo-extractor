@@ -104,6 +104,7 @@ def submit():
         ("img_res", [int, float]),
         ("img_overviewed", [bool]),
         ("img_overview_min_size", [int]),
+        ("documents", [dict]),
         ("extracts_volume", [str]),
         ("compress_extract", [bool]),
     ]
@@ -355,10 +356,10 @@ def submit():
 
     if "fake_processing" in req:
         task_result = taskmanager.send_task(
-            "extraction.fake_processing", args=[req, dt, is_raster]
+            "idgo_extractor.fake_extraction", args=[req, dt, is_raster]
         )
     else:
-        task_result = taskmanager.send_task("extraction.do", args=[req, dt, is_raster])
+        task_result = taskmanager.send_task("idgo_extractor.extraction", args=[req, dt, is_raster])
     task_id = task_result.id
     task_result.backend.store_result(
         task_id=task_id, result={"query": req}, state="SUBMITTED"
