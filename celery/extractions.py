@@ -902,10 +902,18 @@ def zip_dir(self, *args, **kwargs):
         )
         logger.debug("extract_location: {}".format(extract_location))
         try:
-            with ZipFile(extract_location, "w") as myzip:
-                for root, dirs, files in os.walk(tmp_dir):
+            with ZipFile(extract_location, "w") as my_zip:
+                for root, folders, files in os.walk(tmp_dir):
+                    for folder in folders:
+                        absolute_path = os.path.join(root, folder)
+                        relative_path = absolute_path.replace(tmp_dir + os.sep, '')
+                        my_zip.write(absolute_path, relative_path)
                     for file in files:
-                        myzip.write(os.path.join(root, file), file)
+                        absolute_path = os.path.join(root, file)
+                        print(absolute_path)
+                        relative_path = absolute_path.replace(tmp_dir + os.sep, '')
+                        print(relative_path)
+                        my_zip.write(absolute_path, relative_path)
         except IOError as e:
             logger.error(
                 "IOError while zipping {} into {}".format(tmp_dir, extract_location)
