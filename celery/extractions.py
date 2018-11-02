@@ -8,6 +8,7 @@ import shutil
 import logging
 import sys
 import time
+import requests
 from osgeo import gdal, ogr, osr
 from zipfile import ZipFile
 from celery import Task
@@ -69,7 +70,7 @@ class IdgoExtractorTask(Task):
                 "submission_datetime": self.submission_datetime,
                 "start_datetime": self.start_datetime,
                 "end_datetime": self.end_datetime,
-                "query": self.req,
+                "query": self.params,
             },
         )
         logging.info("Task has been stopped")
@@ -90,7 +91,7 @@ class IdgoExtractorTask(Task):
                         "progress_pct": progress_pct,
                         "submission_datetime": self.submission_datetime,
                         "start_datetime": self.start_datetime,
-                        "query": self.req,
+                        "query": self.params,
                     },
                 )
 
@@ -125,14 +126,17 @@ def task_decorator(f):
     """
 
     @wraps(f)
-    def decorated_function(self, req, datetime, is_raster, **kwargs):
+    def decorated_function(self, *args, **kwargs):
+
+        params = kwargs["params"]
+        datetime = kwargs["datetime"]
 
         logging.info(
             "Receiving task_id %s, pid %d: %s, created at %s"
-            % (str(self.request.id), os.getpid(), str(req), datetime)
+            % (str(self.request.id), os.getpid(), str(params), datetime)
         )
 
-        self.req = req
+        self.params = params
         self.submission_datetime = datetime
 
         if self.check_if_stop_requested_and_report_progress():
@@ -143,24 +147,25 @@ def task_decorator(f):
             meta={
                 "pid": os.getpid(),
                 "hostname": self.request.hostname,
-                "query": req,
+                "query": params,
                 "submission_datetime": self.submission_datetime,
             },
         )
         self.start_datetime = get_current_datetime()
 
-        res = f(self, req, datetime, is_raster, **kwargs)
+        res = f(self, *args, **kwargs)
+
         if res is None:
             res = {}
 
         logging.info(
             "Finished task_id %s, pid %d: %s, created at %s, result %s"
-            % (str(self.request.id), os.getpid(), str(req), datetime, str(res))
+            % (str(self.request.id), os.getpid(), str(params), datetime, str(res))
         )
 
         res["pid"] = os.getpid()
         res["hostname"] = self.request.hostname
-        res["query"] = req
+        res["query"] = params
         if self.submission_datetime:
             res["submission_datetime"] = self.submission_datetime
         if self.start_datetime:
@@ -327,17 +332,17 @@ def normalize_resampling(method):
 
 # Aimed at being run under do_process_in_forked_process()
 def process_raster(process_func_args, gdal_callback, gdal_callback_data):
-    (req, tmpdir) = process_func_args
+    (params, tmpdir) = process_func_args
 
-    if "simulate_stuck_process" in req:
+    if "simulate_stuck_process" in params:
         logging.info("Simulating stucked proccess")
         time.sleep(100)
 
-    src_filename = req["source"]
+    src_filename = params["source"]
     src_ds = gdal.Open(src_filename)
     src_gt = src_ds.GetGeoTransform()
 
-    dst_format = req["dst_format"]
+    dst_format = params["dst_format"]
     driver_name = dst_format["gdal_driver"].upper()
     target_ext = gdal.GetDriverByName(driver_name).GetMetadataItem("DMD_EXTENSION")
 
@@ -373,29 +378,29 @@ def process_raster(process_func_args, gdal_callback, gdal_callback_data):
             warp_options += ' -co "%s=%s"' % (option, val)
     else:
         warp_options += " -of VRT"
-    if "dst_srs" in req:
-        warp_options += ' -t_srs "' + req["dst_srs"] + '"'
-    if "img_res" in req:
-        res = float(req["img_res"])
+    if "dst_srs" in params:
+        warp_options += ' -t_srs "' + params["dst_srs"] + '"'
+    if "img_res" in params:
+        res = float(params["img_res"])
         warp_options += " -tr %.15f %.15f" % (res, res)
-    if "img_resampling_method" in req:
-        warp_options += " -r " + normalize_resampling(req["img_resampling_method"])
+    if "img_resampling_method" in params:
+        warp_options += " -r " + normalize_resampling(params["img_resampling_method"])
 
     src_srs_wkt = src_ds.GetProjectionRef()
     src_srs = osr.SpatialReference()
     src_srs.SetFromUserInput(src_srs_wkt)
 
-    if "dst_srs" in req:
+    if "dst_srs" in params:
         dst_srs = osr.SpatialReference()
-        dst_srs.SetFromUserInput(req["dst_srs"])
+        dst_srs.SetFromUserInput(params["dst_srs"])
     else:
         dst_srs = src_srs
 
     footprint_geom = None
     cutline_filename = None
-    if "footprint" in req:
-        footprint_geom = ogr.CreateGeometryFromWkt(req["footprint"])
-        footprint_srs_wkt = req["footprint_srs"]
+    if "footprint" in params:
+        footprint_geom = ogr.CreateGeometryFromWkt(params["footprint"])
+        footprint_srs_wkt = params["footprint_srs"]
         footprint_srs = osr.SpatialReference()
         footprint_srs.SetFromUserInput(footprint_srs_wkt)
         footprint_geom.AssignSpatialReference(footprint_srs)
@@ -447,7 +452,7 @@ def process_raster(process_func_args, gdal_callback, gdal_callback_data):
     # In the situation of a north-up image where no explicit resolution
     # has been asked, align on source pixel boundaries;
     if (
-        "img_res" not in req
+        "img_res" not in params
         and src_srs.IsSame(dst_srs)
         and src_gt[2] == 0.0
         and src_gt[4] == 0.0
@@ -492,7 +497,7 @@ def process_raster(process_func_args, gdal_callback, gdal_callback_data):
 
     # In theory, building all power of twos overviews takes 1/3 of the
     # full resolution image ( 1/2^2 + 1/4^2 + ... = 1 /3 )
-    if "img_overviewed" in req and req["img_overviewed"]:
+    if "img_overviewed" in params and params["img_overviewed"]:
         pct_max = 0.75
     else:
         pct_max = 1.0
@@ -539,14 +544,14 @@ def process_raster(process_func_args, gdal_callback, gdal_callback_data):
         gdal.Unlink(cutline_filename)
 
     # Build overviews if requested
-    if "img_overviewed" in req and req["img_overviewed"] and success:
+    if "img_overviewed" in params and params["img_overviewed"] and success:
         method = "AVERAGE"
-        if "img_resampling_method" in req:
-            method = normalize_resampling(req["img_resampling_method"])
+        if "img_resampling_method" in params:
+            method = normalize_resampling(params["img_resampling_method"])
 
         ds = gdal.Open(out_filename, gdal.GA_Update)
 
-        img_overview_min_size = int(req.get("img_overview_min_size", 256))
+        img_overview_min_size = int(params.get("img_overview_min_size", 256))
         xsize = ds.RasterXSize
         ysize = ds.RasterYSize
         ratio = 1
@@ -579,20 +584,20 @@ def process_raster(process_func_args, gdal_callback, gdal_callback_data):
 
 # Aimed at being run under do_process_in_forked_process()
 def process_vector(process_func_args, gdal_callback, gdal_callback_data):
-    (req, tmpdir) = process_func_args
+    (params, tmpdir) = process_func_args
 
-    if "simulate_stuck_process" in req:
+    if "simulate_stuck_process" in params:
         logging.info("Simulating stucked proccess")
         time.sleep(100)
 
-    source = req["source"]
+    source = params["source"]
     flags = gdal.OF_VERBOSE_ERROR
     # We don't want to hit the PostGIS Raster driver11
     if source.upper().startswith("PG:"):
         flags += gdal.OF_VECTOR
     src_ds = gdal.OpenEx(source, flags)
 
-    dst_format = req["dst_format"]
+    dst_format = params["dst_format"]
     driver_name = dst_format["gdal_driver"].upper()
     if "extension" in dst_format:
         target_ext = "." + dst_format["extension"]
@@ -606,8 +611,8 @@ def process_vector(process_func_args, gdal_callback, gdal_callback_data):
             target_ext = ""
 
     layer_name_component = ""
-    if "layer" in req:
-        layer_name_component = req["layer"] + "_"
+    if "layer" in params:
+        layer_name_component = params["layer"] + "_"
     elif src_ds.GetLayerCount() == 1:
         layer_name_component = src_ds.GetLayer(0).GetName() + "_"
 
@@ -643,11 +648,11 @@ def process_vector(process_func_args, gdal_callback, gdal_callback_data):
             val = "NO"
         translate_options += ' -lco "%s=%s"' % (option, val)
 
-    if "dst_srs" in req:
-        translate_options += " -t_srs " + req["dst_srs"]
+    if "dst_srs" in params:
+        translate_options += " -t_srs " + params["dst_srs"]
 
-    if "layer" in req:
-        layers = [src_ds.GetLayerByName(req["layer"])]
+    if "layer" in params:
+        layers = [src_ds.GetLayerByName(params["layer"])]
     else:
         layers = [src_ds.GetLayer(i) for i in range(src_ds.GetLayerCount())]
 
@@ -660,9 +665,9 @@ def process_vector(process_func_args, gdal_callback, gdal_callback_data):
         translate_options = base_translate_options
         add_layer_name = True
 
-        if "footprint" in req:
-            footprint_geom = ogr.CreateGeometryFromWkt(req["footprint"])
-            footprint_srs_wkt = req["footprint_srs"]
+        if "footprint" in params:
+            footprint_geom = ogr.CreateGeometryFromWkt(params["footprint"])
+            footprint_srs_wkt = params["footprint_srs"]
             footprint_srs = osr.SpatialReference()
             footprint_srs.SetFromUserInput(footprint_srs_wkt)
             footprint_geom.AssignSpatialReference(footprint_srs)
@@ -754,68 +759,52 @@ def process_vector(process_func_args, gdal_callback, gdal_callback_data):
     name="idgo_extractor.extraction", bind=True, base=IdgoExtractorTask, throws=(OperationalError)
 )
 @task_decorator
-def do(self, req, datetime, is_raster):
+def data_extraction(self, *args, **kwargs):
+
+    params = kwargs["params"]
+    extract_id = kwargs["extract_id"]
+
     extracts_volume = IDGO_EXTRACT_EXTRACTS_DIR
     if service_conf is not None:
         extracts_volume = service_conf.get("extracts_volume", extracts_volume)
-    extracts_volume = req.get("extracts_volume", extracts_volume)
+    extracts_volume = params.get("extracts_volume", extracts_volume)
 
-    extraction_id = "IDGO_EXTRACT_{0}".format(self.request.id)
-    tmpdir = tempfile.mkdtemp(dir=extracts_volume, prefix="%s-" % extraction_id)
-    logger.info("Created temp dir %s" % tmpdir)
+    extraction_name = "IDGO_EXTRACT_{0}".format(extract_id)
+
+    # Find or create tmp_dir
+    tmp_dir = None
+    subfolders = [f.path for f in os.scandir(extracts_volume) if f.is_dir() and f.name.startswith(extraction_name)]
+    if subfolders:
+        tmp_dir = subfolders[0]
+    else:
+        tmp_dir = tempfile.mkdtemp(dir=extracts_volume, prefix="%s-" % extraction_name)
+        logger.info("Created temp dir {}".format(tmp_dir))
+
+    dir_name = params["dir_name"]
+
+    # Create dir that will contain the file copy
+    data_copy_location = os.path.join(tmp_dir, dir_name)
+    if not os.path.exists(data_copy_location):
+        os.makedirs(data_copy_location)
 
     try:
-        if is_raster:
-            do_process_in_forked_process(self, process_raster, (req, tmpdir))
+        if params["is_raster"]:
+            do_process_in_forked_process(self, process_raster, (params, data_copy_location))
         else:
-            do_process_in_forked_process(self, process_vector, (req, tmpdir))
-
-        compress_extract = req.get("compress_extract", True)
-        logger.debug("compress_extract: {}".format(compress_extract))
-
-        # Zip extract
-        if compress_extract:
-
-            try:
-                extract_location = os.path.join(
-                    extracts_volume, "%s.zip" % extraction_id
-                )
-                logger.debug("extract_location: {}".format(extract_location))
-                with ZipFile(extract_location, "w") as myzip:
-                    for root, dirs, files in os.walk(tmpdir):
-                        for file in files:
-                            myzip.write(os.path.join(root, file), file)
-            except IOError as e:
-                logger.error(
-                    "IOError while zipping {} into {}".format(tmpdir, extract_location)
-                )
-                raise e
-
-        # Copy directory
-        else:
-            try:
-                extract_location = os.path.join(extracts_volume, extraction_id)
-                logger.debug("extract_location: {}".format(extract_location))
-                shutil.copytree(tmpdir, extract_location)
-            except shutil.Error as e:
-                logger.error(
-                    "Error while copying {} to {}".format(tmpdir, extract_location)
-                )
-                raise e
+            do_process_in_forked_process(self, process_vector, (params, data_copy_location))
 
     finally:
-        # delete directory after zipping or exception
-        shutil.rmtree(tmpdir)
-        logger.info("Removed dir %s" % tmpdir)
-
-    return {"extract_location": extract_location}
+        pass
 
 
 @taskmanager.task(
     name="idgo_extractor.fake_extraction", bind=True, base=IdgoExtractorTask, throws=(OperationalError)
 )
 @task_decorator
-def fake_extraction(self, req, datetime, is_raster):
+def fake_extraction(self, *args, **kwargs):
+
+    params = kwargs["params"]
+
     total_iters = 20
     for i in range(total_iters):
         logging.info("Step %d" % i)
@@ -825,5 +814,101 @@ def fake_extraction(self, req, datetime, is_raster):
             self.mark_has_stopped_and_raise_ignore()
 
         time.sleep(1)
-        if "simulate_failure_at_step" in req and req["simulate_failure_at_step"] == i:
+        if "simulate_failure_at_step" in params and params["simulate_failure_at_step"] == i:
             raise OperationalError("Simulate failure")
+
+
+@taskmanager.task(
+    name="idgo_extractor.file_copy", bind=True, base=IdgoExtractorTask, throws=(OperationalError)
+)
+@task_decorator
+def file_copy(self, *args, **kwargs):
+
+    params = kwargs["params"]
+    extract_id = kwargs["extract_id"]
+
+    extracts_volume = IDGO_EXTRACT_EXTRACTS_DIR
+    if service_conf is not None:
+        extracts_volume = service_conf.get("extracts_volume", extracts_volume)
+    extracts_volume = params.get("extracts_volume", extracts_volume)
+
+    extraction_name = "IDGO_EXTRACT_{0}".format(extract_id)
+
+    # Find or create tmp_dir
+    tmp_dir = None
+    subfolders = [f.path for f in os.scandir(extracts_volume) if f.is_dir() and f.name.startswith(extraction_name)]
+    if subfolders:
+        tmp_dir = subfolders[0]
+    else:
+        tmp_dir = tempfile.mkdtemp(dir=extracts_volume, prefix="%s-" % extraction_name)
+        logger.info("Created temp dir {}".format(tmp_dir))
+
+    file_name = params["file_name"]
+    dir_name = params["dir_name"]
+    file_location = params["file_location"]
+
+    # Create dir that will contain the file copy
+    file_copy_location = os.path.join(tmp_dir, dir_name)
+    if not os.path.exists(file_copy_location):
+        os.makedirs(file_copy_location)
+
+    # Download a copy of the file
+    r = requests.get(file_location, allow_redirects=True)
+    if r.status_code == 200:
+        open(os.path.join(file_copy_location, file_name), 'wb').write(r.content)
+    else:
+        logger.error("Error while downloading file {} with status code {}".format(file_location, r.status_code))
+
+    return {"file_name": file_name}
+
+@taskmanager.task(
+    name="idgo_extractor.zip_dir", bind=True, base=IdgoExtractorTask, throws=(OperationalError)
+)
+@task_decorator
+def zip_dir(self, *args, **kwargs):
+
+    params = kwargs["params"]
+    extract_id = kwargs["extract_id"]
+
+    extracts_volume = IDGO_EXTRACT_EXTRACTS_DIR
+    if service_conf is not None:
+        extracts_volume = service_conf.get("extracts_volume", extracts_volume)
+    extracts_volume = params.get("extracts_volume", extracts_volume)
+
+    extraction_name = "IDGO_EXTRACT_{0}".format(extract_id)
+
+    # Find tmp_dir
+    tmp_dir = None
+    subfolders = [subfolder.path for subfolder in os.scandir(extracts_volume)
+                  if subfolder.is_dir() and subfolder.name.startswith(extraction_name)]
+    if subfolders:
+        tmp_dir = subfolders[0]
+    else:
+        logger.error(
+            "Can't find temp dir corresponding to request {}".format(self.request.id)
+        )
+        return
+
+    try:
+        # Zip extract
+        extract_location = os.path.join(
+            extracts_volume, "%s.zip" % extraction_name
+        )
+        logger.debug("extract_location: {}".format(extract_location))
+        try:
+            with ZipFile(extract_location, "w") as myzip:
+                for root, dirs, files in os.walk(tmp_dir):
+                    for file in files:
+                        myzip.write(os.path.join(root, file), file)
+        except IOError as e:
+            logger.error(
+                "IOError while zipping {} into {}".format(tmp_dir, extract_location)
+            )
+            raise e
+
+    finally:
+        # delete directory after zipping or exception
+        shutil.rmtree(tmp_dir)
+        logger.info("Removed dir %s" % tmp_dir)
+
+    return {"extract_location": extract_location}

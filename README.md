@@ -91,29 +91,41 @@ Document JSON
     "user_company": "Chaine de caractères contenant le nom de l’organisme de l’utilisateur",
     "user_email_address": "Chaine de caractères contenant l’adresse email de l’utilisateur (indispensable pour l’avertir de l’avancement des traitements)",
     "user_address": "Chaine de caractères contenant l’adresse postale de l’utilisateur (indispensable pour lui envoyer un support physique avec les données)",
-    "source": "Chaine de connexion GDAL/OGR à la source de données sur laquelle porte l’extraction",
-    "layer": "Couche à extraire (dans le cas de données vecteur) Cf. paramètre layer de orginfo : http://www.gdal.org/ogrinfo.html",
-    "dst_format" :
-    {
-        "gdal_driver":            "Nom court du driver GDAL/OGR. Par exemple GTiff, ESRI Shapefile, GPKG",
-        "extension":              'extension du fichier. Optionnel. Dans le cas où gdal_driver est "MapInfo file", doit être "tab" ou "mif"'
-        "options": {
-            "nom_de_la_clef":       "valeur"
-        },
-        "layer_options":  # applicable uniquement pour les drivers vecteurs
+    "data_extractions": [
         {
-            "nom_de_la_clef":       "valeur"
+            "dir_name": "Nom du répertoire dans lequel les données seront insérées",
+            "source": "Chaine de connexion GDAL/OGR à la source de données sur laquelle porte l’extraction",
+            "layer": "Couche à extraire (dans le cas de données vecteur) Cf. paramètre layer de orginfo : http://www.gdal.org/ogrinfo.html",
+            "dst_format" :
+            {
+                "gdal_driver":            "Nom court du driver GDAL/OGR. Par exemple GTiff, ESRI Shapefile, GPKG",
+                "extension":              'extension du fichier. Optionnel. Dans le cas où gdal_driver est "MapInfo file", doit être "tab" ou "mif"'
+                "options": {
+                    "nom_de_la_clef":       "valeur"
+                },
+                "layer_options":  # applicable uniquement pour les drivers vecteurs
+                {
+                    "nom_de_la_clef":       "valeur"
+                }
+            },
+            "dst_srs": "Chaine de caractères contenant le système de coordonnées en sortie sous la forme d’un code EPSG. Exemple : 'epsg:2154' pour le Lambert93.",
+            "footprint": "Emprise géographique d'extraction en WKT (chaine de caractère) ou GeoJSON (sous la forme d'un objet JSON)",
+            "footprint_srs": "Chaine de caractères contenant le système de coordonnées de footprint. Si footprint est GeoJSON doit être EPSG:4326. Si footprint est WKT, peut être quelconque (y compris différent du SRS des données demandé en sortie",
+            "img_overviewed": "Booléean JSon. Si ce paramètre est fixé à true, l'extracteur crée des overviews de manière itérative en appliquant un facteur d'échelle 2 depuis l'échelle nominale des données. Cette itération est stoppée dès que la taille d'un overview est strictement inférieure au paramètre img_overview_min_size (aucun overview dont une des dimensions est strictement inférieure à ce paramètre ne doit être créé).",
+            "img_overview_min_size" : "Valeur entière. Dimension minimum des overviews intégrées au fichier image produit (les overviews sont créés jusqu'à ce que leur largeur et hauteur est inférieure à ce paramètre). Valeur par défaut: 256",
+            "img_res": "Nombre flottant. Résolution de l’image produite dans l'unité de dst_srs (mètres ou degrés en fonction des cas). La même résolution est appliquée en x et y.",
+            "img_resampling_method": "Chaine de caractères. Méthode de ré-échantillonage appliquée par GDAL. Supporte les valeurs proposées par GDAL: nearest, bilinear, cubic, cubicspline, lanczos, average"
         }
-    },
-    "dst_srs": "Chaine de caractères contenant le système de coordonnées en sortie sous la forme d’un code EPSG. Exemple : 'epsg:2154' pour le Lambert93.",
-    "footprint": "Emprise géographique d'extraction en WKT (chaine de caractère) ou GeoJSON (sous la forme d'un objet JSon)",
-    "footprint_srs": "Chaine de caractères contenant le système de coordonnées de footprint. Si footprint est GeoJSON doit être EPSG:4326. Si footprint est WKT, peut être quelconque (y compris différent du SRS des données demandé en sortie",
-    "img_overviewed": "Booléean JSon. Si ce paramètre est fixé à true, l'extracteur crée des overviews de manière itérative en appliquant un facteur d'échelle 2 depuis l'échelle nominale des données. Cette itération est stoppée dès que la taille d'un overview est strictement inférieure au paramètre img_overview_min_size (aucun overview dont une des dimensions est strictement inférieure à ce paramètre ne doit être créé).",
-    "img_overview_min_size" : "Valeur entière. Dimension minimum des overviews intégrées au fichier image produit (les overviews sont créés jusqu'à ce que leur largeur et hauteur est inférieure à ce paramètre). Valeur par défaut: 256",
-    "img_res": "Nombre flottant. Résolution de l’image produite dans l'unité de dst_srs (mètres ou degrés en fonction des cas). La même résolution est appliquée en x et y.",
-    "img_resampling_method": "Chaine de caractères. Méthode de ré-échantillonage appliquée par GDAL. Supporte les valeurs proposées par GDAL: nearest, bilinear, cubic, cubicspline, lanczos, average",
+    ],
+    "additional_files": [
+        {
+            "file_name": "Nom du fichier avec son extension",
+            "dir_name": "Nom du répertoire dans lequel le fichier sera copié",
+            "file_location": "URL vers le fichier à copier"
+        }
+    ],
     "extracts_volume": "Adresse du volume dans lequel les données extraites doivent être déposées",
-    "compress_extract": "Booléen JSon. Indique si les données extraites doivent être placées dans une archive. Sinon un répertoire contenant les données est créé. Valeur par défaut : true. Un résultat non compressé ne sera pas disponible au téléchargement."
+    "compress_extract": "Booléen JSON. Indique si les données extraites doivent être placées dans une archive. Sinon un répertoire contenant les données est créé. Valeur par défaut : true. Un résultat non compressé ne sera pas disponible au téléchargement."
 }
 ```
 
