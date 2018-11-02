@@ -37,8 +37,12 @@ print("Test invalid submit request 3")
 req = {
     "user_id": "my_id",
     "user_email_address": "invalid",
-    "source": "invalid",
-    "dst_format": "invalid",
+    "data_extractions": [
+        {
+            "source": "invalid",
+            "dst_format": "invalid"
+        }
+    ],
 }
 r = submit(req)
 assert r.status_code == 400
@@ -51,8 +55,12 @@ print("Test invalid submit request 4")
 req = {
     "user_id": "my_id",
     "user_email_address": "foo@bar.com",
-    "source": "invalid",
-    "dst_format": "invalid",
+    "data_extractions": [
+        {
+            "source": "invalid",
+            "dst_format": "invalid"
+        }
+    ],
 }
 r = submit(req)
 assert r.status_code == 400
@@ -81,13 +89,17 @@ print("Test valid request 1")
 req = {
     "user_id": "my_id",
     "user_email_address": "foo@bar.com",
-    "source": os.getcwd() + "/byte.tif",
-    "dst_format": {"gdal_driver": "GTiff", "options": {"TILED": "YES"}},
-    # 'img_res': 0.0000002,
-    # 'dst_srs': 'EPSG:26711',
-    "footprint": "POLYGON((440100.000 3751000.000,440720.000 3750120.000,441920.000 3750120.000,441920.000 3751320.000,440100.000 3751000.000))",
-    "footprint_srs": "EPSG:26711",
-    "img_overviewed": True,
+    "data_extractions": [
+        {
+            "source": os.getcwd() + "/byte.tif",
+            "dst_format": {"gdal_driver": "GTiff", "options": {"TILED": "YES"}},
+            # 'img_res': 0.0000002,
+            # 'dst_srs': 'EPSG:26711',
+            "footprint": "POLYGON((440100.000 3751000.000,440720.000 3750120.000,441920.000 3750120.000,441920.000 3751320.000,440100.000 3751000.000))",
+            "footprint_srs": "EPSG:26711",
+            "img_overviewed": True,
+        }
+    ],
 }
 r = submit(req)
 assert r.status_code == 201
@@ -134,13 +146,17 @@ print("Test valid request 2")
 req = {
     "user_id": "my_id",
     "user_email_address": "foo@bar.com",
-    "source": os.getcwd() + "/byte.tif",
-    "dst_format": {"gdal_driver": "GTiff", "options": {"TILED": "YES"}},
-    "img_res": 60.0,
-    "dst_srs": "EPSG:26711",
-    "footprint": "POLYGON((440100.000 3751000.000,440720.000 3750120.000,441920.000 3750120.000,441920.000 3751320.000,440100.000 3751000.000))",
-    "footprint_srs": "EPSG:26711",
-    "img_overviewed": True,
+    "data_extractions": [
+        {
+            "source": os.getcwd() + "/byte.tif",
+            "dst_format": {"gdal_driver": "GTiff", "options": {"TILED": "YES"}},
+            "img_res": 60.0,
+            "dst_srs": "EPSG:26711",
+            "footprint": "POLYGON((440100.000 3751000.000,440720.000 3750120.000,441920.000 3750120.000,441920.000 3751320.000,440100.000 3751000.000))",
+            "footprint_srs": "EPSG:26711",
+            "img_overviewed": True,
+        }
+    ],
 }
 r = submit(req)
 assert r.status_code == 201
@@ -188,11 +204,15 @@ print("Test a request that will fail on backend side")
 req = {
     "user_id": "my_id",
     "user_email_address": "foo@bar.com",
-    "source": os.getcwd() + "/byte.tif",
-    "dst_format": {"gdal_driver": "JPEG"},
-    "img_res": 0.0000002,
-    "dst_srs": "EPSG:4326",
-    "img_overviewed": True,
+    "data_extractions": [
+        {
+            "source": os.getcwd() + "/byte.tif",
+            "dst_format": {"gdal_driver": "JPEG"},
+            "img_res": 0.0000002,
+            "dst_srs": "EPSG:4326",
+            "img_overviewed": True,
+        }
+    ],
 }
 r = submit(req)
 assert r.status_code == 201
@@ -219,12 +239,16 @@ print("Test aborting a request")
 req = {
     "user_id": "my_id",
     "user_email_address": "foo@bar.com",
-    "source": os.getcwd() + "/byte.tif",
-    "dst_format": {"gdal_driver": "GTiff", "options": {"TILED": "YES"}},
-    "img_res": 0.0000002,
-    "dst_srs": "EPSG:4326",
-    "img_resampling_method": "nearest",
-    "img_overviewed": True,
+    "data_extractions": [
+        {
+            "source": os.getcwd() + "/byte.tif",
+            "dst_format": {"gdal_driver": "GTiff", "options": {"TILED": "YES"}},
+            "img_res": 0.0000002,
+            "dst_srs": "EPSG:4326",
+            "img_resampling_method": "nearest",
+            "img_overviewed": True,
+        }
+    ],
 }
 r = submit(req)
 assert r.status_code == 201

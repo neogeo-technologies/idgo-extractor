@@ -53,11 +53,15 @@ def test(
     req = {
         "user_id": "my_id",
         "user_email_address": "foo@bar.com",
-        "source": source_name,
-        "dst_format": {"gdal_driver": output_format},
-        "footprint": "POLYGON((%.15g %.15g,%.15g %.15g,%.15g %.15g,%.15g %.15g,%.15g %.15g))"
-        % (x0, y0, minx, maxy, maxx, maxy, maxx, miny, x0, y0),
-        "footprint_srs": "EPSG:32632",
+        "data_extractions": [
+            {
+                "source": source_name,
+                "dst_format": {"gdal_driver": output_format},
+                "footprint": "POLYGON((%.15g %.15g,%.15g %.15g,%.15g %.15g,%.15g %.15g,%.15g %.15g))"
+                             % (x0, y0, minx, maxy, maxx, maxy, maxx, miny, x0, y0),
+                "footprint_srs": "EPSG:32632",
+            }
+        ],
     }
     if extension is not None:
         req["dst_format"]["extension"] = extension
