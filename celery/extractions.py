@@ -780,12 +780,15 @@ def data_extraction(self, *args, **kwargs):
         tmp_dir = tempfile.mkdtemp(dir=extracts_volume, prefix="%s-" % extraction_name)
         logger.info("Created temp dir {}".format(tmp_dir))
 
-    dir_name = params["dir_name"]
+    dir_name = params.get("dir_name")
 
     # Create dir that will contain the file copy
-    data_copy_location = os.path.join(tmp_dir, dir_name)
-    if not os.path.exists(data_copy_location):
-        os.makedirs(data_copy_location)
+    if dir_name:
+        data_copy_location = os.path.join(tmp_dir, dir_name)
+        if not os.path.exists(data_copy_location):
+            os.makedirs(data_copy_location)
+    else:
+        data_copy_location = tmp_dir
 
     try:
         if params["is_raster"]:
@@ -844,13 +847,16 @@ def file_copy(self, *args, **kwargs):
         logger.info("Created temp dir {}".format(tmp_dir))
 
     file_name = params["file_name"]
-    dir_name = params["dir_name"]
+    dir_name = params.get("dir_name")
     file_location = params["file_location"]
 
     # Create dir that will contain the file copy
-    file_copy_location = os.path.join(tmp_dir, dir_name)
-    if not os.path.exists(file_copy_location):
-        os.makedirs(file_copy_location)
+    if dir_name:
+        file_copy_location = os.path.join(tmp_dir, dir_name)
+        if not os.path.exists(file_copy_location):
+            os.makedirs(file_copy_location)
+    else:
+        file_copy_location = tmp_dir
 
     # Download a copy of the file
     r = requests.get(file_location, allow_redirects=True)
