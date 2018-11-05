@@ -145,7 +145,9 @@ def submit():
         if "fake_processing" in task_info["worker_params"]:
             task = taskmanager.signature(
                 "idgo_extractor.fake_extraction",
-                args=[task_info["worker_params"], current_datetime, extract_id])
+                kwargs={"params": task_info["worker_params"],
+                        "datetime": current_datetime,
+                        "extract_id": extract_id})
         else:
             task = taskmanager.signature(
                 task_info["worker_name"],
