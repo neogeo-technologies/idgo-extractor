@@ -920,11 +920,15 @@ def zip_dir(self, *args, **kwargs):
                 for root, folders, files in os.walk(tmp_dir):
                     for folder in folders:
                         absolute_path = os.path.join(root, folder)
-                        relative_path = absolute_path.replace(tmp_dir + os.sep, '')
+                        relative_path = absolute_path.replace(
+                            tmp_dir + os.sep,
+                            extraction_name + os.sep)
                         my_zip.write(absolute_path, relative_path)
                     for file in files:
                         absolute_path = os.path.join(root, file)
-                        relative_path = absolute_path.replace(tmp_dir + os.sep, '')
+                        relative_path = absolute_path.replace(
+                            tmp_dir + os.sep,
+                            extraction_name + os.sep)
                         my_zip.write(absolute_path, relative_path)
         except IOError as e:
             logger.error(
