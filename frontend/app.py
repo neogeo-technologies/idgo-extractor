@@ -112,7 +112,6 @@ def submit():
         ("data_extractions", [list]),
         ("additional_files", [list]),
         ("extracts_volume", [str]),
-        ("compress_extract", [bool]),
     ]
     for (k, accepted_types) in optional_parameters:
         if k in req and type(req[k]) not in accepted_types:
@@ -134,10 +133,22 @@ def submit():
         common_params_dict["fake_processing"] = True
 
     if "data_extractions" in req:
-        tasks_infos.extend(get_tasks_info_for_data_extracts(req["data_extractions"], common_params_dict))
+        data_extractions_tasks_infos = get_tasks_info_for_data_extracts(req["data_extractions"], common_params_dict)
+        errors = []
+        for task_info in data_extractions_tasks_infos:
+            errors.extend(task_info.get("param_errors"))
+        if errors:
+            return make_error(_({"title": "invalid data extraction parameters", "list": errors}), req)
+        tasks_infos.extend(data_extractions_tasks_infos)
 
     if "additional_files" in req:
-        tasks_infos.extend(get_tasks_info_for_doc_copy(req["additional_files"], common_params_dict))
+        doc_copy_tasks_infos = get_tasks_info_for_doc_copy(req["additional_files"], common_params_dict)
+        errors = []
+        for task_info in doc_copy_tasks_infos:
+            errors.extend(task_info.get("param_errors"))
+        if errors:
+            return make_error(_({"title": "invalid doc copy parameters", "list": errors}), req)
+        tasks_infos.extend(doc_copy_tasks_infos)
 
     extract_id = str(uuid.uuid4())
     tasks = []
@@ -216,7 +227,6 @@ class DataExtractParamsChecker():
         self.check_resampling_method()
 
     def check_datasource(self):
-
         source = self.extract_params["source"]
         gdal.PushErrorHandler()
         flags = gdal.OF_VERBOSE_ERROR
@@ -546,7 +556,6 @@ def get_task_info_for_data_extract(extract_param_dict, common_params_dict):
         ("layer", [str]),
         ("extracts_volume", [str]),
         ("extract_name", [str]),
-        ("compress_extract", [bool]),
     ]
     for (k, accepted_types) in optional_parameters:
         if k in worker_params and type(worker_params[k]) not in accepted_types:
@@ -617,7 +626,7 @@ def jobs_get(task_id):
             "payload": {"status": "STOP_REQUESTED"},
         }
 
-    if res.state == "SUCCESS" and res.info["query"].get("compress_extract", True):
+    if res.state == "SUCCESS":
         possible_requests["download"] = {
             "url": request.url_root + "jobs/" + str(task_id) + "/download",
             "verb": "GET",
@@ -631,7 +640,10 @@ def jobs_get(task_id):
 
     info = res.info
     if not isinstance(info, dict):
-        logging.error("res.info is not a dict")
+        if res.state == "FAILURE":
+            resp["exception"] = str(info)
+        else:
+            logging.error("res.info is not a dict")
     else:
         resp.update(info)
     return make_json_response(resp, 200)
@@ -702,10 +714,6 @@ def jobs_download_result(task_id):
         return make_error(_("Unknown task_id"), http_status=404)
     elif res.state != "SUCCESS":
         return make_error(_("Task is not in SUCCESS state"), http_status=409)
-    elif not res.info["query"].get("compress_extract", True):
-        return make_error(
-            _("This extract is not available for download"), http_status=404
-        )
 
     file_path = res.info["extract_location"]
 

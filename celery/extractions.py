@@ -99,6 +99,7 @@ class IdgoExtractorTask(Task):
 
     # Overriden method from Task. Called when an exception occurs
     def on_failure(self, exc, task_id, args, kwargs, einfo):
+
         self.end_datetime = get_current_datetime()
         meta = {
             "pid": os.getpid(),
@@ -107,7 +108,7 @@ class IdgoExtractorTask(Task):
             "submission_datetime": self.submission_datetime,
             "start_datetime": self.start_datetime,
             "end_datetime": self.end_datetime,
-            "query": args[0],
+            "query": kwargs["params"],
         }
         logging.error("Failure occured: " + str(meta))
         # Change state to FAILED instead of FAILURE, because there are issues
@@ -348,7 +349,10 @@ def process_raster(process_func_args, gdal_callback, gdal_callback_data):
 
     dst_format = params["dst_format"]
     driver_name = dst_format["gdal_driver"].upper()
-    target_ext = gdal.GetDriverByName(driver_name).GetMetadataItem("DMD_EXTENSION")
+    gd = gdal.GetDriverByName(driver_name)
+    if not gd:
+        raise OperationalError("Unknown GDAL driver name: %s".format(driver_name))
+    target_ext = gd.GetMetadataItem("DMD_EXTENSION")
 
     parts = os.path.splitext(os.path.basename(src_filename))
     out_filename = os.path.join(tmpdir, parts[0] + "_extract." + target_ext)

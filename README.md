@@ -124,8 +124,7 @@ Document JSON
             "file_location": "URL vers le fichier à copier"
         }
     ],
-    "extracts_volume": "Adresse du volume dans lequel les données extraites doivent être déposées",
-    "compress_extract": "Booléen JSON. Indique si les données extraites doivent être placées dans une archive. Sinon un répertoire contenant les données est créé. Valeur par défaut : true. Un résultat non compressé ne sera pas disponible au téléchargement."
+    "extracts_volume": "Adresse du volume dans lequel les données extraites doivent être déposées"
 }
 ```
 
