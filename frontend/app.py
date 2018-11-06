@@ -701,7 +701,7 @@ def jobs_put(task_id):
     }
     info = res.info
     resp.update(info)
-    return make_json_response(resp, 201)
+    return make_json_response(resp, 202)
 
 
 @app.route("/jobs/<string:task_id>/download", methods=["GET"])
