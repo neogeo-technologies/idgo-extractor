@@ -138,7 +138,7 @@ def submit():
         for task_info in data_extractions_tasks_infos:
             errors.extend(task_info.get("param_errors"))
         if errors:
-            return make_error(_({"title": "invalid data extraction parameters", "list": errors}), req)
+            return make_error(_({"title": "Invalid data extraction parameters", "list": errors}), req)
         tasks_infos.extend(data_extractions_tasks_infos)
 
     if "additional_files" in req:
@@ -147,7 +147,7 @@ def submit():
         for task_info in doc_copy_tasks_infos:
             errors.extend(task_info.get("param_errors"))
         if errors:
-            return make_error(_({"title": "invalid doc copy parameters", "list": errors}), req)
+            return make_error(_({"title": "Invalid doc copy parameters", "list": errors}), req)
         tasks_infos.extend(doc_copy_tasks_infos)
 
     extract_id = str(uuid.uuid4())
