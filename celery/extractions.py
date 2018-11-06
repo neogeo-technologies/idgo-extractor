@@ -130,6 +130,8 @@ def task_decorator(f):
 
         params = kwargs["params"]
         datetime = kwargs["datetime"]
+        extract_id = kwargs.get("extract_id")
+        subtasks_ids = kwargs.get("subtasks_ids")
 
         logging.info(
             "Receiving task_id %s, pid %d: %s, created at %s"
@@ -138,6 +140,8 @@ def task_decorator(f):
 
         self.params = params
         self.submission_datetime = datetime
+        self.extract_id = extract_id
+        self.subtasks_ids = subtasks_ids
 
         if self.check_if_stop_requested_and_report_progress():
             self.mark_has_stopped_and_raise_ignore()
@@ -830,6 +834,9 @@ def file_copy(self, *args, **kwargs):
     params = kwargs["params"]
     extract_id = kwargs["extract_id"]
 
+    if self.check_if_stop_requested_and_report_progress():
+        self.mark_has_stopped_and_raise_ignore()
+
     extracts_volume = IDGO_EXTRACT_EXTRACTS_DIR
     if service_conf is not None:
         extracts_volume = service_conf.get("extracts_volume", extracts_volume)
@@ -876,6 +883,9 @@ def zip_dir(self, *args, **kwargs):
     params = kwargs["params"]
     extract_id = kwargs["extract_id"]
 
+    if self.check_if_stop_requested_and_report_progress():
+        self.mark_has_stopped_and_raise_ignore()
+
     extracts_volume = IDGO_EXTRACT_EXTRACTS_DIR
     if service_conf is not None:
         extracts_volume = service_conf.get("extracts_volume", extracts_volume)
@@ -910,9 +920,7 @@ def zip_dir(self, *args, **kwargs):
                         my_zip.write(absolute_path, relative_path)
                     for file in files:
                         absolute_path = os.path.join(root, file)
-                        print(absolute_path)
                         relative_path = absolute_path.replace(tmp_dir + os.sep, '')
-                        print(relative_path)
                         my_zip.write(absolute_path, relative_path)
         except IOError as e:
             logger.error(

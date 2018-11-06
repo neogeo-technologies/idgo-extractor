@@ -161,14 +161,18 @@ def submit():
         kwargs={"params": {},
                 "datetime": current_datetime,
                 "extract_id": extract_id},
-        task_id = extract_id
+        task_id=extract_id
     )
     task_result = chord(tasks, zip_task).apply_async()
+
+    subtasks_ids = []
+    for subtask in task_result.parent.children:
+        subtasks_ids.append(subtask.id)
 
     if task_result:
         task_id = task_result.id
         task_result.backend.store_result(
-            task_id=task_id, result={"query": req}, state="SUBMITTED"
+            task_id=task_id, result={"query": req, "subtasks_ids": subtasks_ids}, state="SUBMITTED"
         )
 
         resp = {
@@ -664,6 +668,13 @@ def jobs_put(task_id):
     terminate = False
     if "hard_kill" in req and req["hard_kill"]:
         terminate = True
+
+    # Revocation of subtasks
+    for subtask_id in res.result["subtasks_ids"]:
+        subtask_res = taskmanager.AsyncResult(subtask_id)
+        taskmanager.control.revoke(subtask_id, terminate=terminate)
+        res.backend.store_result(subtask_id, subtask_res.info, "STOP_REQUESTED")
+
     taskmanager.control.revoke(task_id, terminate=terminate)
     res.backend.store_result(res.id, res.info, "STOP_REQUESTED")
 
