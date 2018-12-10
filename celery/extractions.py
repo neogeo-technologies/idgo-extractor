@@ -503,6 +503,10 @@ def process_raster(process_func_args, gdal_callback, gdal_callback_data):
         minx, maxx, miny, maxy = footprint_geom.GetEnvelope()
         warp_options += " -te %.18g %.18g %.18g %.18g" % (minx, miny, maxx, maxy)
 
+    # Take care of images with unusual channel data types when asking for JPEG compression
+    if driver_options.get("COMPRESS", "NONE") == "JPEG":
+        warp_options += " -ot Byte"
+
     # In theory, building all power of twos overviews takes 1/3 of the
     # full resolution image ( 1/2^2 + 1/4^2 + ... = 1 /3 )
     if "img_overviewed" in params and params["img_overviewed"]:
