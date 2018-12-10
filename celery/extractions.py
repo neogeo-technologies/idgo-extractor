@@ -358,7 +358,7 @@ def process_raster(process_func_args, gdal_callback, gdal_callback_data):
     out_filename = os.path.join(tmpdir, parts[0] + "_extract." + target_ext)
 
     can_warp_directly = False
-    if "options" in dst_format:
+    if dst_format.get("options"):
         driver_options = upper_dict(dst_format["options"])
     else:
         driver_options = {}
@@ -386,19 +386,19 @@ def process_raster(process_func_args, gdal_callback, gdal_callback_data):
             warp_options += ' -co "%s=%s"' % (option, val)
     else:
         warp_options += " -of VRT"
-    if "dst_srs" in params:
+    if params.get("dst_srs"):
         warp_options += ' -t_srs "' + params["dst_srs"] + '"'
-    if "img_res" in params:
+    if params.get("img_res"):
         res = float(params["img_res"])
         warp_options += " -tr %.15f %.15f" % (res, res)
-    if "img_resampling_method" in params:
+    if params.get("img_resampling_method"):
         warp_options += " -r " + normalize_resampling(params["img_resampling_method"])
 
     src_srs_wkt = src_ds.GetProjectionRef()
     src_srs = osr.SpatialReference()
     src_srs.SetFromUserInput(src_srs_wkt)
 
-    if "dst_srs" in params:
+    if params.get("dst_srs"):
         dst_srs = osr.SpatialReference()
         dst_srs.SetFromUserInput(params["dst_srs"])
     else:
@@ -406,7 +406,7 @@ def process_raster(process_func_args, gdal_callback, gdal_callback_data):
 
     footprint_geom = None
     cutline_filename = None
-    if "footprint" in params:
+    if params.get("footprint"):
         footprint_geom = ogr.CreateGeometryFromWkt(params["footprint"])
         footprint_srs_wkt = params["footprint_srs"]
         footprint_srs = osr.SpatialReference()
@@ -509,7 +509,7 @@ def process_raster(process_func_args, gdal_callback, gdal_callback_data):
 
     # In theory, building all power of twos overviews takes 1/3 of the
     # full resolution image ( 1/2^2 + 1/4^2 + ... = 1 /3 )
-    if "img_overviewed" in params and params["img_overviewed"]:
+    if params.get("img_overviewed"):
         pct_max = 0.75
     else:
         pct_max = 1.0
@@ -556,9 +556,9 @@ def process_raster(process_func_args, gdal_callback, gdal_callback_data):
         gdal.Unlink(cutline_filename)
 
     # Build overviews if requested
-    if "img_overviewed" in params and params["img_overviewed"] and success:
+    if params.get("img_overviewed") and success:
         method = "AVERAGE"
-        if "img_resampling_method" in params:
+        if params.get("img_resampling_method"):
             method = normalize_resampling(params["img_resampling_method"])
 
         ds = gdal.Open(out_filename, gdal.GA_Update)
@@ -598,7 +598,7 @@ def process_raster(process_func_args, gdal_callback, gdal_callback_data):
 def process_vector(process_func_args, gdal_callback, gdal_callback_data):
     (params, tmpdir) = process_func_args
 
-    if "simulate_stuck_process" in params:
+    if params.get("simulate_stuck_process"):
         logging.info("Simulating stucked proccess")
         time.sleep(100)
 
@@ -611,7 +611,7 @@ def process_vector(process_func_args, gdal_callback, gdal_callback_data):
 
     dst_format = params["dst_format"]
     driver_name = dst_format["gdal_driver"].upper()
-    if "extension" in dst_format:
+    if dst_format.get("extension"):
         target_ext = "." + dst_format["extension"]
     else:
         target_ext = gdal.GetDriverByName(driver_name).GetMetadataItem("DMD_EXTENSION")
@@ -623,7 +623,7 @@ def process_vector(process_func_args, gdal_callback, gdal_callback_data):
             target_ext = ""
 
     layer_name_component = ""
-    if "layer" in params:
+    if params.get("layer"):
         layer_name_component = params["layer"] + "_"
     elif src_ds.GetLayerCount() == 1:
         layer_name_component = src_ds.GetLayer(0).GetName() + "_"
@@ -660,10 +660,10 @@ def process_vector(process_func_args, gdal_callback, gdal_callback_data):
             val = "NO"
         translate_options += ' -lco "%s=%s"' % (option, val)
 
-    if "dst_srs" in params:
+    if params.get("dst_srs"):
         translate_options += " -t_srs " + params["dst_srs"]
 
-    if "layer" in params:
+    if params.get("layer"):
         layers = [src_ds.GetLayerByName(params["layer"])]
     else:
         layers = [src_ds.GetLayer(i) for i in range(src_ds.GetLayerCount())]
@@ -677,7 +677,7 @@ def process_vector(process_func_args, gdal_callback, gdal_callback_data):
         translate_options = base_translate_options
         add_layer_name = True
 
-        if "footprint" in params:
+        if params.get("footprint"):
             footprint_geom = ogr.CreateGeometryFromWkt(params["footprint"])
             footprint_srs_wkt = params["footprint_srs"]
             footprint_srs = osr.SpatialReference()

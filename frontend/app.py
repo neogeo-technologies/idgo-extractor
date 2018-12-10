@@ -127,15 +127,15 @@ def submit():
 
     tasks_infos = []
     common_params_dict = dict()
-    if "extracts_volume" in req:
-
+    if req.get("extracts_volume"):
+        # TODO
         # Check if the extract volume exists and if we have write
 
         common_params_dict["extracts_volume"] = req["extracts_volume"]
-    if "fake_processing" in req:
+    if req.get("fake_processing"):
         common_params_dict["fake_processing"] = True
 
-    if "data_extractions" in req:
+    if req.get("data_extractions"):
         data_extractions_tasks_infos = get_tasks_info_for_data_extracts(req["data_extractions"], common_params_dict)
         errors = []
         for task_info in data_extractions_tasks_infos:
@@ -144,7 +144,7 @@ def submit():
             return make_error(_({"title": "Invalid data extraction parameters", "list": errors}), req)
         tasks_infos.extend(data_extractions_tasks_infos)
 
-    if "additional_files" in req:
+    if req.get("additional_files"):
         doc_copy_tasks_infos = get_tasks_info_for_doc_copy(req["additional_files"], common_params_dict)
         errors = []
         for task_info in doc_copy_tasks_infos:
@@ -263,7 +263,7 @@ class DataExtractParamsChecker():
             # Could happen for example for a GeoPackage.
             # Currently we will process it as vector-only or raster-only depending
             # on the presence of layer.
-            if "layer" in self.extract_params:
+            if  self.extract_params.get("layer"):
                 logging.info(
                     "Source has both raster and vector. Processing it as vector due to 'layer' being specified"
                 )
@@ -348,7 +348,7 @@ class DataExtractParamsChecker():
         if not dst_format or not dst_format_name or not source:
             return
 
-        if "options" in dst_format:
+        if dst_format.get("options"):
             options = dst_format["options"]
             if not isinstance(options, dict):
                 param_error = build_invalid_parameter_type_error_message("dst_format.options")
@@ -362,7 +362,7 @@ class DataExtractParamsChecker():
 
         # Check if layer is required and correct when present
         if self.is_raster:
-            if "layer" in self.extract_params:
+            if self.extract_params.get("layer"):
                 param_error = "'{}' is present, but unexpected for a raster source".format("layer")
                 self.errors.append(param_error)
 
@@ -371,7 +371,7 @@ class DataExtractParamsChecker():
                 param_error = "'{}' is not georeferenced".format("source")
                 self.errors.append(param_error)
         else:
-            if "layer" not in self.extract_params:
+            if not self.extract_params.get("layer"):
                 accept_several_out_layers = upper(dst_format_name) in (
                     upper("ESRI Shapefile"),
                     upper("MapInfo File"),
@@ -394,7 +394,7 @@ class DataExtractParamsChecker():
                     self.errors.append(param_error)
                     return
 
-            if "layer_options" in dst_format:
+            if dst_format.get("layer_options"):
                 layer_options = dst_format["layer_options"]
                 if not isinstance(layer_options, dict):
                     param_error = build_invalid_parameter_type_error_message("dst_format.layer_options")
@@ -408,7 +408,7 @@ class DataExtractParamsChecker():
 
     def check_dst_srs(self):
         # Validate dst_srs
-        if "dst_srs" in self.extract_params:
+        if self.extract_params.get("dst_srs"):
             dst_srs = self.extract_params["dst_srs"]
             sr = osr.SpatialReference()
             if sr.SetFromUserInput(dst_srs) != 0:
@@ -419,7 +419,8 @@ class DataExtractParamsChecker():
         g = None
 
         # Validate footprint and footprint_srs
-        if "footprint" in self.extract_params:
+        if self.extract_params.get("footprint"):
+
             footprint = self.extract_params["footprint"]
             footprint_is_json = False
             if isinstance(footprint, dict):
@@ -479,7 +480,7 @@ class DataExtractParamsChecker():
                 self.extract_params["footprint_geojson"] = footprint_as_geojson
 
     def check_resampling_method(self):
-        if "img_resampling_method" in self.extract_params:
+        if self.extract_params.get("img_resampling_method"):
             img_resampling_method = self.extract_params["img_resampling_method"].lower()
             if img_resampling_method not in (
                 "nearest",
@@ -564,7 +565,7 @@ def get_task_info_for_data_extract(extract_param_dict, common_params_dict):
         ("extract_name", [str]),
     ]
     for (k, accepted_types) in optional_parameters:
-        if k in worker_params and type(worker_params[k]) not in accepted_types:
+        if worker_params.get(k) and type(worker_params[k]) not in accepted_types:
             param_error = build_invalid_parameter_type_error_message(k)
             param_errors.append(param_error)
 
