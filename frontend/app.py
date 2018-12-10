@@ -128,6 +128,9 @@ def submit():
     tasks_infos = []
     common_params_dict = dict()
     if "extracts_volume" in req:
+
+        # Check if the extract volume exists and if we have write
+
         common_params_dict["extracts_volume"] = req["extracts_volume"]
     if "fake_processing" in req:
         common_params_dict["fake_processing"] = True
@@ -149,6 +152,9 @@ def submit():
         if errors:
             return make_error(_({"title": "Invalid doc copy parameters", "list": errors}), req)
         tasks_infos.extend(doc_copy_tasks_infos)
+
+    if not tasks_infos:
+        return make_error(_("Not any task in this request"), req)
 
     extract_id = str(uuid.uuid4())
     tasks = []
