@@ -141,6 +141,7 @@ Exemple 1 pour la création d'un fichier GeoTIFF encodé en JPEG, avec une compr
             "BLOCKXSIZE": 256,
             "BLOCKYSIZE": 256
         }
+    }
 ```
 
 Exemple 2 pour la création d'un fichier GeoTIFF encodé en LZW, tuilé avec des tuiles de 512 pixels de côté et accompagné d'un fichier TFW :
@@ -154,6 +155,7 @@ Exemple 2 pour la création d'un fichier GeoTIFF encodé en LZW, tuilé avec des
             "BLOCKXSIZE": 512,
             "BLOCKYSIZE": 512
         }
+    }
 ```
 
 Exemple 3 pour la création d'un fichier GeoJSON dont l'arborescence des attributs est supprimée, limitant la précision des coordonnées à 5 chiffres après la virgule, intégrant une BBOX et une description de la couche :
@@ -169,6 +171,7 @@ Exemple 3 pour la création d'un fichier GeoJSON dont l'arborescence des attribu
             "COORDINATE_PRECISION": 4,
             "DESCRIPTION": "This is just an example description"
         }
+    }
 ```
 
 
