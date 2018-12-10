@@ -128,10 +128,19 @@ def submit():
     tasks_infos = []
     common_params_dict = dict()
     if req.get("extracts_volume"):
-        # TODO
-        # Check if the extract volume exists and if we have write
-
         common_params_dict["extracts_volume"] = req["extracts_volume"]
+
+        # Check if the extract volume exists and if we have write permission
+        if not os.path.exists(common_params_dict["extracts_volume"]):
+            return make_error(
+                _("Extracts directory not found: {}".format(common_params_dict["extracts_volume"])), req)
+        elif not os.path.isdir(common_params_dict["extracts_volume"]):
+            return make_error(
+                _("Extracts directory path not a directory: {}".format(common_params_dict["extracts_volume"])), req)
+        elif not os.access(common_params_dict["extracts_volume"], os.W_OK):
+            return make_error(
+                _("No write access to extracts directory: {}".format(common_params_dict["extracts_volume"])), req)
+
     if req.get("fake_processing"):
         common_params_dict["fake_processing"] = True
 
