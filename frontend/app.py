@@ -351,7 +351,7 @@ class DataExtractParamsChecker():
 
     def check_driver_options(self):
         dst_format = self.extract_params["dst_format"]
-        dst_format_name = self.extract_params["dst_format"]["gdal_driver"]
+        dst_format_name = dst_format["gdal_driver"] if "gdal_driver" in dst_format else ""
         source = self.extract_params["source"]
 
         if not dst_format or not dst_format_name or not source:
@@ -386,7 +386,7 @@ class DataExtractParamsChecker():
                     upper("MapInfo File"),
                     upper("GPKG"),
                 )
-                if self.ds.GetLayerCount() > 1 and not accept_several_out_layers:
+                if self.ds and self.ds.GetLayerCount() > 1 and not accept_several_out_layers:
                     param_error = build_missing_parameter_error_message("layer")
                     self.errors.append(param_error)
                     return
