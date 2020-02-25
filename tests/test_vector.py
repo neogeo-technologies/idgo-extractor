@@ -1,9 +1,20 @@
 from osgeo import gdal, ogr
+import io
 import json
 import os
 import requests
 import time
 import sys
+import zipfile
+
+
+def get_zip_filename(zip_data):
+    with io.BytesIO(zip_data) as iozip:
+        with zipfile.ZipFile(iozip) as file_zip:
+            for info in file_zip.infolist():
+                filename = info.filename
+    return filename
+
 
 in_docker = False
 if in_docker:
@@ -37,6 +48,7 @@ def test(
     rectangular_footprint=False,
     output_format="ESRI Shapefile",
     extension=None,
+    load_dataset_dir=False,
 ):
 
     minx = 478316.000000
@@ -64,7 +76,7 @@ def test(
         ],
     }
     if extension is not None:
-        req["dst_format"]["extension"] = extension
+        req["data_extractions"][0]["dst_format"]["extension"] = extension
     if layer_name is not None:
         req["layer"] = layer_name
     r = submit(req)
@@ -103,7 +115,10 @@ def test(
     # There's a bug in GDAL 2.1 regarding reading zipped tab
     if output_format != "MapInfo File":
         gdal.FileFromMemBuffer("/vsimem/result.zip", zip_data)
-        ds = ogr.Open("/vsizip//vsimem/result.zip")
+        filename = get_zip_filename(zip_data)
+        if load_dataset_dir:
+            filename = os.path.dirname(filename)
+        ds = ogr.Open("/vsizip//vsimem/result.zip/{}".format(filename))
         assert ds is not None
         lyr = ds.GetLayer(0)
         assert lyr.GetFeatureCount() != 0
@@ -136,4 +151,4 @@ if not in_docker:
     os.system(
         "ogr2ogr -update %s %s -nln %s -overwrite" % (pg_dbname, src_gpkg, pg_layer)
     )
-    test(pg_dbname, pg_layer)
+    test(pg_dbname, pg_layer, load_dataset_dir=True)

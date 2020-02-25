@@ -345,3 +345,5 @@ de données vecteur et rasteur. Ils sont prévus pour fonctionner nominalement
 avec la configuration "Hors Docker", avec au minimum le frontend lancé au prélable.
 Le backend peut être lancé ultérieurement.
 
+Certains tests ont besoin d'avoir un accès à un base de données "autotest" avec l'extension Postgis, sur la machine en 
+local. L'utilisateur courant doit pouvoir s'y connecter sans mot de passe.
