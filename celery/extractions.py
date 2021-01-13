@@ -5,7 +5,6 @@ import os
 import os.path
 import tempfile
 import shutil
-import logger
 import sys
 import time
 import requests
