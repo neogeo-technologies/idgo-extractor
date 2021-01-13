@@ -5,7 +5,7 @@ import os
 import os.path
 import tempfile
 import shutil
-import logging
+import logger
 import sys
 import time
 import requests
@@ -13,6 +13,7 @@ from osgeo import gdal, ogr, osr
 from zipfile import ZipFile
 from celery import Task
 from celery.exceptions import Ignore
+from celery.utils.log import get_task_logger
 from functools import wraps
 
 # use billiard instead of standard multiprocessing to avoid
@@ -25,7 +26,7 @@ elif os.path.exists("/common"):
     sys.path.append("/common")
 from common import taskmanager, service_conf
 
-logger = logging.getLogger("worker")
+logger = get_task_logger(__name__)
 
 env = os.environ
 
@@ -73,7 +74,7 @@ class IdgoExtractorTask(Task):
                 "query": self.params,
             },
         )
-        logging.info("Task has been stopped")
+        logger.info("Task has been stopped")
         raise Ignore()
 
     def check_if_stop_requested_and_report_progress(self, progress_pct=None):
@@ -110,7 +111,7 @@ class IdgoExtractorTask(Task):
             "end_datetime": self.end_datetime,
             "query": kwargs["params"],
         }
-        logging.error("Failure occured: " + str(meta))
+        logger.error("Failure occured: " + str(meta))
         # Change state to FAILED instead of FAILURE, because there are issues
         # on the frontend side with the deserialization of exception. And
         # we want to embed more state in the meta.
@@ -134,7 +135,7 @@ def task_decorator(f):
         extract_id = kwargs.get("extract_id")
         subtasks_ids = kwargs.get("subtasks_ids")
 
-        logging.info(
+        logger.info(
             "Receiving task_id %s, pid %d: %s, created at %s"
             % (str(self.request.id), os.getpid(), str(params), datetime)
         )
@@ -163,7 +164,7 @@ def task_decorator(f):
         if res is None:
             res = {}
 
-        logging.info(
+        logger.info(
             "Finished task_id %s, pid %d: %s, created at %s, result %s"
             % (str(self.request.id), os.getpid(), str(params), datetime, str(res))
         )
@@ -203,7 +204,7 @@ def do_process_in_forked_process(task, process_func, process_func_args):
         assert continue_process in (True, False)
         if not continue_process:
             callback_data[1] = True
-            logging.info("Abortion requested")
+            logger.info("Abortion requested")
             return 0
         return 1
 
@@ -216,7 +217,7 @@ def do_process_in_forked_process(task, process_func, process_func_args):
         def decorated_function(process_func_args, callback, callback_data):
 
             socket = callback_data[0]
-            logging.info("Forked process PID %d" % os.getpid())
+            logger.info("Forked process PID %d" % os.getpid())
             try:
                 res = f(process_func_args, callback, callback_data)
                 stop_requested = callback_data[1]
@@ -227,17 +228,17 @@ def do_process_in_forked_process(task, process_func, process_func_args):
                 socket.send(res)
                 socket.close()
                 if stop_requested:
-                    logging.info("End of child on task cancellation")
+                    logger.info("End of child on task cancellation")
                 else:
                     if "error" in res:
-                        logging.info("End of child on handled error")
+                        logger.info("End of child on handled error")
                     else:
-                        logging.info("End of child on success")
+                        logger.info("End of child on success")
             except Exception as e:
                 res = {"error": str(e)}
                 socket.send(res)
                 socket.close()
-                logging.info("End of child on error")
+                logger.info("End of child on error")
                 raise
 
         return decorated_function
@@ -249,7 +250,7 @@ def do_process_in_forked_process(task, process_func, process_func_args):
         args=(process_func_args, _forked_process_gdal_callback, callback_data),
     )
     p.start()
-    logging.info("Processing of task forked as PID %d from %d" % (p.pid, os.getpid()))
+    logger.info("Processing of task forked as PID %d from %d" % (p.pid, os.getpid()))
     child_conn.close()
     last_time = time.time()
 
@@ -262,12 +263,12 @@ def do_process_in_forked_process(task, process_func, process_func_args):
             # check for the task status. If STOP_REQUESTED, then force kill the
             # child process
             while not parent_conn.poll(5):
-                logging.info(
+                logger.info(
                     "Did not receive information from child in the last 5 seconds"
                 )
                 result = task.AsyncResult(task.request.id)
                 if result.state == "STOP_REQUESTED":
-                    logging.error("STOP_REQUESTED: Hard kill child!")
+                    logger.error("STOP_REQUESTED: Hard kill child!")
                     p.terminate()
                     task.mark_has_stopped_and_raise_ignore()
 
@@ -282,7 +283,7 @@ def do_process_in_forked_process(task, process_func, process_func_args):
 
                 cur_time = time.time()
                 if cur_time - last_time > 5.0:
-                    logging.info("Progress %f" % progress_pct)
+                    logger.info("Progress %f" % progress_pct)
                     last_time = cur_time
 
                 if task.check_if_stop_requested_and_report_progress(
@@ -298,7 +299,7 @@ def do_process_in_forked_process(task, process_func, process_func_args):
         while True:
             if not mp.active_children():
                 break
-            logging.info("Joining child...")
+            logger.info("Joining child...")
             time.sleep(1)
 
         parent_conn.close()
@@ -340,7 +341,7 @@ def process_raster(process_func_args, gdal_callback, gdal_callback_data):
     (params, tmpdir) = process_func_args
 
     if "simulate_stuck_process" in params:
-        logging.info("Simulating stucked proccess")
+        logger.info("Simulating stucked proccess")
         time.sleep(100)
 
     src_filename = params["source"]
@@ -515,7 +516,7 @@ def process_raster(process_func_args, gdal_callback, gdal_callback_data):
         pct_max = 1.0
 
     if can_warp_directly:
-        logging.info(
+        logger.info(
             "Invoking gdalwarp %s %s %s" % (src_filename, out_filename, warp_options)
         )
         ret_ds = gdal.Warp(
@@ -529,16 +530,19 @@ def process_raster(process_func_args, gdal_callback, gdal_callback_data):
         ret_ds = None
     else:
         tmp_vrt = out_filename + ".vrt"
-        logging.info(
+        logger.info(
             "Invoking gdalwarp %s %s %s" % (src_filename, tmp_vrt, warp_options)
         )
         tmp_ds = gdal.Warp(tmp_vrt, src_ds, options=warp_options)
         if tmp_ds is None:
-            return {"error": gdal.GetLastErrorMsg()}
+            err_msg = gdal.GetLastErrorMsg()
+            err_type = gdal.GetLastErrorType()
+            logger.error("%s: %s" % (err_type, err_msg))
+            return {"error": err_msg}
         translate_options = "-of " + driver_name
         for option in driver_options:
             translate_options += " -co %s=%s" % (option, driver_options[option])
-        logging.info(
+        logger.info(
             "Invoking gdal_translate %s %s %s"
             % (tmp_vrt, out_filename, translate_options)
         )
@@ -575,7 +579,7 @@ def process_raster(process_func_args, gdal_callback, gdal_callback_data):
             ratio *= 2
             ratios.append(ratio)
         if len(ratios) > 0:
-            logging.info(
+            logger.info(
                 "Invoking gdaladdo -r %s %s %s"
                 % (method, out_filename, " ".join(str(r) for r in ratios))
             )
@@ -589,7 +593,10 @@ def process_raster(process_func_args, gdal_callback, gdal_callback_data):
         ds = None
 
     if not success:
-        return {"error": gdal.GetLastErrorMsg()}
+        err_msg = gdal.GetLastErrorMsg()
+        err_type = gdal.GetLastErrorType()
+        logger.error("%s: %s" % (err_type, err_msg))
+        return {"error": err_msg}
     else:
         return {"success": True}
 
@@ -599,7 +606,7 @@ def process_vector(process_func_args, gdal_callback, gdal_callback_data):
     (params, tmpdir) = process_func_args
 
     if params.get("simulate_stuck_process"):
-        logging.info("Simulating stucked proccess")
+        logger.info("Simulating stucked proccess")
         time.sleep(100)
 
     source = params["source"]
@@ -744,7 +751,7 @@ def process_vector(process_func_args, gdal_callback, gdal_callback_data):
         cbk = create_scaled_progress(
             float(idx) / len(layers), float(idx + 1) / len(layers), gdal_callback
         )
-        logging.info(
+        logger.info(
             "Invoking ogr2ogr %s %s %s" % (out_filename, source, translate_options)
         )
         out_ds = gdal.VectorTranslate(
@@ -822,7 +829,7 @@ def fake_extraction(self, *args, **kwargs):
 
     total_iters = 20
     for i in range(total_iters):
-        logging.info("Step %d" % i)
+        logger.info("Step %d" % i)
         if self.check_if_stop_requested_and_report_progress(
             progress_pct=100.0 * i / total_iters
         ):
