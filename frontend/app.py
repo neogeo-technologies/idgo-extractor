@@ -30,7 +30,7 @@ del sys.modules[__name__].__dict__["_"]
 # create the app:
 app = Flask(__name__)
 
-logger = logging.getLogger("app")
+logger = logging.getLogger(__name__)
 
 env = os.environ
 DEBUG = env.get("DEBUG", "False")
@@ -273,11 +273,11 @@ class DataExtractParamsChecker():
             # Currently we will process it as vector-only or raster-only depending
             # on the presence of layer.
             if  self.extract_params.get("layer"):
-                logging.info(
+                logger.info(
                     "Source has both raster and vector. Processing it as vector due to 'layer' being specified"
                 )
             else:
-                logging.info(
+                logger.info(
                     "Source has both raster and vector. Processing it as vector due to 'layer' being absent"
                 )
         self.is_raster = not self.has_vector or (self.has_raster and "layer" not in self.extract_params)
@@ -351,7 +351,7 @@ class DataExtractParamsChecker():
 
     def check_driver_options(self):
         dst_format = self.extract_params["dst_format"]
-        dst_format_name = self.extract_params["dst_format"]["gdal_driver"]
+        dst_format_name = dst_format["gdal_driver"] if "gdal_driver" in dst_format else ""
         source = self.extract_params["source"]
 
         if not dst_format or not dst_format_name or not source:
@@ -386,7 +386,7 @@ class DataExtractParamsChecker():
                     upper("MapInfo File"),
                     upper("GPKG"),
                 )
-                if self.ds.GetLayerCount() > 1 and not accept_several_out_layers:
+                if self.ds and self.ds.GetLayerCount() > 1 and not accept_several_out_layers:
                     param_error = build_missing_parameter_error_message("layer")
                     self.errors.append(param_error)
                     return
@@ -604,7 +604,7 @@ def get_task_info_for_data_extract(extract_param_dict, common_params_dict):
         param_warnings.extend(param_checker.warnings)
 
     for warning in param_warnings:
-        logging.info(warning)
+        logger.info(warning)
 
     task_info = {
         "worker_name": "idgo_extractor.extraction",
@@ -659,7 +659,7 @@ def jobs_get(task_id):
         if res.state == "FAILURE":
             resp["exception"] = str(info)
         else:
-            logging.error("res.info is not a dict")
+            logger.error("res.info is not a dict")
     else:
         resp.update(info)
     return make_json_response(resp, 200)
