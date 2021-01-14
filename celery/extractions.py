@@ -43,6 +43,8 @@ PROCESS_TIMEOUT = env.get("PROCESS_TIMEOUT", 3600)
 
 DEBUG_CUTLINE = env.get("DEBUG_CUTLINE", False)
 
+GDAL_CONFIG_GDAL_CACHEMAX = env.get("GDAL_CONFIG_GDAL_CACHEMAX", 512)
+
 
 def get_current_datetime():
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
@@ -338,6 +340,22 @@ def normalize_resampling(method):
     return method
 
 
+def get_config_option(**opts):
+    for k, _ in opts.items():
+        logger.info("GDAL config Options %s is set to %s." % (
+            k, str(gdal.GetConfigOption(k))))
+
+
+def set_config_option(**opts):
+    for k, v in opts.items():
+        gdal.SetConfigOption(k, val)
+
+
+def unset_config_option(**opts):
+    for k, _ in opts.items():
+        gdal.SetConfigOption(k, None)
+
+
 # Aimed at being run under do_process_in_forked_process()
 def process_raster(process_func_args, gdal_callback, gdal_callback_data):
     (params, tmpdir) = process_func_args
@@ -544,16 +562,28 @@ def process_raster(process_func_args, gdal_callback, gdal_callback_data):
         for option in driver_options:
             translate_options += " -co %s=%s" % (option, driver_options[option])
         logger.info(
-            "Invoking gdal_translate %s %s %s"
-            % (tmp_vrt, out_filename, translate_options)
+            "Invoking gdal_translate %s %s %s %s"
+            % (tmp_vrt, out_filename, translate_options, config_options)
         )
+
+        config_options = {
+            'GDAL_CACHEMAX': GDAL_CONFIG_GDAL_CACHEMAX,
+            }
+
+        set_config_option(**config_options)
         ret_ds = gdal.Translate(
             out_filename,
             tmp_ds,
             options=translate_options,
             callback=create_scaled_progress(0, pct_max, gdal_callback),
             callback_data=gdal_callback_data,
+            confg=config_options,
         )
+        unset_config_option(**config_options)
+
+        # log:
+        get_config_option(**config_options)
+
         success = ret_ds is not None
         gdal.Unlink(tmp_vrt)
 
