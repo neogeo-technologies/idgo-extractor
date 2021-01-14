@@ -29,6 +29,7 @@ del sys.modules[__name__].__dict__["_"]
 
 # create the app:
 app = Flask(__name__)
+application = app  # GUNICORN
 
 logger = logging.getLogger(__name__)
 
