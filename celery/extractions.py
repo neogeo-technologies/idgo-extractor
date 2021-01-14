@@ -8,6 +8,7 @@ import shutil
 import sys
 import time
 import requests
+from uuid import uuid4
 from osgeo import gdal, ogr, osr
 from zipfile import ZipFile
 from celery import Task
@@ -39,6 +40,8 @@ IDGO_EXTRACT_EXTRACTS_RETENTION_DAYS = int(
 PG_CONNECT_STRING = env.get("PG_CONNECT_STRING")
 
 PROCESS_TIMEOUT = env.get("PROCESS_TIMEOUT", 3600)
+
+DEBUG_CUTLINE = env.get("DEBUG_CUTLINE", False)
 
 
 def get_current_datetime():
@@ -415,9 +418,8 @@ def process_raster(process_func_args, gdal_callback, gdal_callback_data):
         # Project footprint to target SRS
         footprint_geom.TransformTo(dst_srs)
 
-        debug_cutline = False
-        if debug_cutline:
-            cutline_filename = "/tmp/cutline.json"
+        if DEBUG_CUTLINE:
+            cutline_filename = "/tmp/cutline_%s.json" % str(uuid4())[:7]
         else:
             cutline_filename = "/vsimem/cutline.json"
 
