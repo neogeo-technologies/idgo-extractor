@@ -561,14 +561,15 @@ def process_raster(process_func_args, gdal_callback, gdal_callback_data):
         translate_options = "-of " + driver_name
         for option in driver_options:
             translate_options += " -co %s=%s" % (option, driver_options[option])
+
+        config_options = {
+            'GDAL_CACHEMAX': GDAL_CONFIG_GDAL_CACHEMAX,
+        }
+
         logger.info(
             "Invoking gdal_translate %s %s %s %s"
             % (tmp_vrt, out_filename, translate_options, config_options)
         )
-
-        config_options = {
-            'GDAL_CACHEMAX': GDAL_CONFIG_GDAL_CACHEMAX,
-            }
 
         set_config_option(**config_options)
         ret_ds = gdal.Translate(
