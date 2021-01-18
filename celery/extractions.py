@@ -340,20 +340,18 @@ def normalize_resampling(method):
     return method
 
 
-def get_config_option(**opts):
-    for k, _ in opts.items():
-        logger.info("GDAL config Options %s is set to %s." % (
-            k, str(gdal.GetConfigOption(k))))
-
-
 def set_config_option(**opts):
     for k, v in opts.items():
-        gdal.SetConfigOption(k, val)
+        gdal.SetConfigOption(k, str(v))
+        logger.info("GDAL config Options %s is set to %s." % (
+            k, str(gdal.GetConfigOption(k))))
 
 
 def unset_config_option(**opts):
     for k, _ in opts.items():
         gdal.SetConfigOption(k, None)
+        logger.info("GDAL config Options %s is set to %s." % (
+            k, str(gdal.GetConfigOption(k))))
 
 
 # Aimed at being run under do_process_in_forked_process()
@@ -566,24 +564,19 @@ def process_raster(process_func_args, gdal_callback, gdal_callback_data):
             'GDAL_CACHEMAX': GDAL_CONFIG_GDAL_CACHEMAX,
         }
 
-        logger.info(
-            "Invoking gdal_translate %s %s %s %s"
-            % (tmp_vrt, out_filename, translate_options, config_options)
-        )
-
         set_config_option(**config_options)
+        logger.info(
+            "Invoking gdal_translate %s %s %s"
+            % (tmp_vrt, out_filename, translate_options)
+        )
         ret_ds = gdal.Translate(
             out_filename,
             tmp_ds,
             options=translate_options,
             callback=create_scaled_progress(0, pct_max, gdal_callback),
             callback_data=gdal_callback_data,
-            confg=config_options,
         )
         unset_config_option(**config_options)
-
-        # log:
-        get_config_option(**config_options)
 
         success = ret_ds is not None
         gdal.Unlink(tmp_vrt)
