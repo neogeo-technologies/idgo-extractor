@@ -29,6 +29,7 @@ del sys.modules[__name__].__dict__["_"]
 
 # create the app:
 app = Flask(__name__)
+application = app  # GUNICORN
 
 logger = logging.getLogger(__name__)
 
@@ -86,13 +87,17 @@ def upper(x):
 @app.route("/jobs", methods=["POST"])
 def submit():
     """Submit a new task from the JSon content in the POST payload"""
+    logger.debug("app.py::jobs_get: POST `/jobs`")
 
     try:
         req = json.loads(request.data.decode("UTF-8"))
     except Exception as e:
+        logger.exception(e)
         return make_json_load_error(e)
     if type(req) != dict:
+        logger.error("TypeError: POST data is not a `dict`: %s(%s)." % (type(req), str(req)))
         return make_error(_("Payload should be a JSON dictionary"))
+    logger.info("POST data is: %s(%s)." % (type(req), str(req)))
 
     required_parameters = [
         ("user_id", [str]),
@@ -100,8 +105,12 @@ def submit():
     ]
     for (k, accepted_types) in required_parameters:
         if k not in req:
+            logger.error("AttributeError: '%s' is not in %s." % (k, str(req)))
             return missing_parameter_error(k, req)
         if type(req[k]) not in accepted_types:
+            logger.error(
+                "TypeError: type `%s` for value '%s' is not in accepted types: %s." % (
+                    type(req[k]), str(req[k]), str(accepted_types)))
             return invalid_parameter_type_error(k, req)
 
     optional_parameters = [
@@ -115,6 +124,9 @@ def submit():
     ]
     for (k, accepted_types) in optional_parameters:
         if k in req and type(req[k]) not in accepted_types:
+            logger.error(
+                "TypeError: type `%s` for value '%s' is not in accepted types: %s." % (
+                    type(req[k]), str(req[k]), str(accepted_types)))
             return invalid_parameter_type_error(k, req)
 
     user_email_address = req["user_email_address"]
@@ -626,6 +638,7 @@ def is_valid_task(result):
 @app.route("/jobs/<string:task_id>", methods=["GET"])
 def jobs_get(task_id):
     """Get the status of a task"""
+    logger.debug("app.py::jobs_get: GET `/jobs/%s`" % task_id)
 
     res = taskmanager.AsyncResult(task_id)
 
@@ -668,6 +681,7 @@ def jobs_get(task_id):
 @app.route("/jobs/<string:task_id>", methods=["PUT"])
 def jobs_put(task_id):
     """Cancel a task (if {"status": "STOP_REQUESTED"} payload provided)"""
+    logger.debug("app.py::jobs_put: PUT `/jobs/%s`" % task_id)
 
     try:
         req = json.loads(request.data.decode("UTF-8"))
@@ -723,6 +737,7 @@ def jobs_put(task_id):
 @app.route("/jobs/<string:task_id>/download", methods=["GET"])
 def jobs_download_result(task_id):
     """Return the result of a successful task as a .zip attachement"""
+    logger.debug("app.py::jobs_download_result: GET `/jobs/%s/download`" % task_id)
 
     res = taskmanager.AsyncResult(task_id)
 
