@@ -8,6 +8,7 @@ import shutil
 import sys
 import time
 import requests
+from uuid import uuid4
 from osgeo import gdal, ogr, osr
 from zipfile import ZipFile
 from celery import Task
@@ -39,6 +40,10 @@ IDGO_EXTRACT_EXTRACTS_RETENTION_DAYS = int(
 PG_CONNECT_STRING = env.get("PG_CONNECT_STRING")
 
 PROCESS_TIMEOUT = env.get("PROCESS_TIMEOUT", 3600)
+
+DEBUG_CUTLINE = env.get("DEBUG_CUTLINE", False)
+
+GDAL_CONFIG_GDAL_CACHEMAX = env.get("GDAL_CONFIG_GDAL_CACHEMAX", 512)
 
 
 def get_current_datetime():
@@ -335,6 +340,20 @@ def normalize_resampling(method):
     return method
 
 
+def set_config_option(**opts):
+    for k, v in opts.items():
+        gdal.SetConfigOption(k, str(v))
+        logger.info("GDAL config Options %s is set to %s." % (
+            k, str(gdal.GetConfigOption(k))))
+
+
+def unset_config_option(**opts):
+    for k, _ in opts.items():
+        gdal.SetConfigOption(k, None)
+        logger.info("GDAL config Options %s is set to %s." % (
+            k, str(gdal.GetConfigOption(k))))
+
+
 # Aimed at being run under do_process_in_forked_process()
 def process_raster(process_func_args, gdal_callback, gdal_callback_data):
     (params, tmpdir) = process_func_args
@@ -415,9 +434,8 @@ def process_raster(process_func_args, gdal_callback, gdal_callback_data):
         # Project footprint to target SRS
         footprint_geom.TransformTo(dst_srs)
 
-        debug_cutline = False
-        if debug_cutline:
-            cutline_filename = "/tmp/cutline.json"
+        if DEBUG_CUTLINE:
+            cutline_filename = "/tmp/cutline_%s.json" % str(uuid4())[:7]
         else:
             cutline_filename = "/vsimem/cutline.json"
 
@@ -541,6 +559,12 @@ def process_raster(process_func_args, gdal_callback, gdal_callback_data):
         translate_options = "-of " + driver_name
         for option in driver_options:
             translate_options += " -co %s=%s" % (option, driver_options[option])
+
+        config_options = {
+            'GDAL_CACHEMAX': GDAL_CONFIG_GDAL_CACHEMAX,
+        }
+
+        set_config_option(**config_options)
         logger.info(
             "Invoking gdal_translate %s %s %s"
             % (tmp_vrt, out_filename, translate_options)
@@ -552,6 +576,8 @@ def process_raster(process_func_args, gdal_callback, gdal_callback_data):
             callback=create_scaled_progress(0, pct_max, gdal_callback),
             callback_data=gdal_callback_data,
         )
+        unset_config_option(**config_options)
+
         success = ret_ds is not None
         gdal.Unlink(tmp_vrt)
 
