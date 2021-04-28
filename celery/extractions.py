@@ -974,7 +974,7 @@ def zip_dir(self, *args, **kwargs):
 
     finally:
         # delete directory after zipping or exception
-        shutil.rmtree(tmp_dir)
+        shutil.rmtree(tmp_dir, ignore_errors=True)
         logger.info("Removed dir %s" % tmp_dir)
 
     return {"extract_location": extract_location}
